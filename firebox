@@ -19,6 +19,7 @@ Commands:
   init         Initialize new profile for PWA
   service      Commands relating to Services
   workspace    Commands relating to Workspaces
+  delete       Delete all related files
 eof
 }
 
@@ -224,6 +225,11 @@ service() {
 	esac
 }
 
+delete() {
+  print_log "You can delete the newly created profile and all associated data"
+  print_log "from Firefox's profile manager by running 'firefox -ProfileManager'."
+}
+
 test() {
 	echo "hello"
 }
@@ -239,7 +245,7 @@ test() {
 
 case "$command" in
 
-init | service | workspace | test)
+init | service | workspace | delete | test)
 	"$command" "$@"
 	;;
 *)
