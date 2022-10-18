@@ -1,0 +1,250 @@
+#!/bin/sh
+# shellcheck disable=2235,2002,2015
+
+NAME=$(basename "$0")
+
+print_log() {
+	echo "$NAME: $1" >&2
+}
+
+# TODO: add usage for service and workspace
+usage() {
+	cat <<eof
+Usage: $NAME <command> <action>
+
+Options:
+  -h, --help   Print this help text and exit
+
+Commands:
+  init         Initialize new profile for PWA
+  service      Commands relating to Services
+  workspace    Commands relating to Workspaces
+eof
+}
+
+[ $# -eq 0 ] && usage && exit 0
+
+command=""
+
+case "$1" in
+-h | --help)
+	usage
+	exit 0
+	;;
+*)
+	command="$1"
+	shift
+	;;
+esac
+
+# Script start
+
+profile_name="$NAME"
+profile_dir="$HOME/.local/share/$profile_name"
+services_file="$profile_dir/$profile_name-services"
+workspaces_file="$profile_dir/$profile_name-workspaces"
+
+init() {
+	[ -d "$profile_dir" ] &&
+		print_log "Profile already exists." &&
+		exit 1
+
+	firefox -CreateProfile "$profile_name $profile_dir"
+
+	# user.js
+	cat <<eof >"$profile_dir/user.js"
+user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
+user_pref("extensions.activeThemeID", "firefox-compact-dark@mozilla.org");
+user_pref("browser.toolbars.bookmarks.visibility", "never");
+user_pref("browser.sessionstore.restore_tabs_lazily", "never");
+user_pref("browser.sessionstore.resume_from_crash", "never");
+user_pref("browser.sessionstore.restore_on_demand", "never");
+user_pref("browser.uiCustomization.state", "{\"placements\":{\"widget-overflow-fixed-list\":[],\"nav-bar\":[\"back-button\",\"forward-button\",\"stop-reload-button\",\"customizableui-special-spring1\",\"urlbar-container\",\"customizableui-special-spring2\",\"save-to-pocket-button\",\"downloads-button\",\"fxa-toolbar-menu-button\"],\"toolbar-menubar\":[\"menubar-items\"],\"TabsToolbar\":[\"tabbrowser-tabs\",\"alltabs-button\"],\"PersonalToolbar\":[\"import-button\",\"personal-bookmarks\"]},\"seen\":[\"save-to-pocket-button\",\"developer-button\"],\"dirtyAreaCache\":[\"nav-bar\",\"PersonalToolbar\",\"toolbar-menubar\",\"TabsToolbar\"],\"currentVersion\":17,\"newElementCount\":3}");
+eof
+
+	# userChrome.css
+	mkdir -p "$profile_dir/chrome"
+	cat <<eof >"$profile_dir/chrome/userChrome.css"
+@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"); /* set default namespace to XUL */
+browser {margin-right: -14px; margin-bottom: -14px;}
+
+#nav-bar {visibility: collapse;}
+
+.tab-label-container, .tab-close-button { display: none !important }
+.tabbrowser-tab {min-width: 35px !important; -moz-box-flex: 0 !important; }
+.tab-icon-overlay {
+  opacity: 1 !important;
+  stroke: var(--tab-icon-overlay-stroke) !important;
+  top: -5.5px !important;
+  inset-inline-end: -6px !important;
+  padding: 2px !important;
+  z-index: 1 !important;
+}
+eof
+
+	echo "Profile '$profile_name' created at: $profile_dir."
+}
+
+create_service() {
+	[ ! -f "$services_file" ] &&
+		touch "$services_file"
+
+	grep -qiEw "^<\|$profile_name:$1\|>" "$services_file" &&
+		print_log "Service '$1' already exists." &&
+		exit 1
+
+	echo "<|$profile_name:$1|><|sep|>$2" >>"$services_file"
+	print_log "Created service: $1"
+}
+
+get_search_query() {
+	query=""
+
+	for i in "$@"; do
+		grep -qiEw "^<\|$profile_name:$i\|>" "$services_file" &&
+			query="$query<\|$profile_name:$i\|>|" ||
+			print_log "Service '$i' does not exist. Ignoring..."
+	done
+
+	echo "$query" | sed 's/|$//'
+}
+
+get_services() {
+	if [ -z "$1" ]; then
+		echo ''
+	elif [ "$1" = "all" ]; then
+		cat "$services_file"
+	else
+		grep -iEw "^($1)" "$services_file" | sed 's/.*<|sep|>//g'
+	fi
+}
+
+launch_services() {
+	urls=""
+
+	if [ "$(echo "$1" | wc -l)" -gt 1 ]; then
+		urls="$(echo "$1" | sed -z 's/\n/ /g;s/^\s*//;s/\s*$//')"
+	else
+		urls="-new-window $1"
+	fi
+
+	# shellcheck disable=2116,2046
+	firefox -P "$profile_name" --class "pwa" $(echo "$urls")
+}
+
+service() {
+	([ "$1" != "create" ] && [ ! -f "$services_file" ]) &&
+		print_log "No services available. Run '$profile_name service create' to create a service." &&
+		exit 1
+
+	action="$1"
+	shift
+
+	case "$action" in
+
+	create)
+		[ "$#" -ne 2 ] &&
+			print_log "Invalid format for service." &&
+			usage &&
+			exit 1
+
+		[ "$1" = "all" ] &&
+			print_log "Invalid name for service: '$2'. '$profile_name service launch all' should launch all services by default" &&
+			exit 1
+
+		# TODO: URL validation for $2
+
+		create_service "$1" "$2"
+		;;
+
+	list)
+		[ "$#" -gt 1 ] &&
+			print_log "Unkown argument: '$1'" &&
+			usage &&
+			exit 1
+
+		([ "$1" != "raw" ] && [ "$1" != "" ]) &&
+			print_log "Invalid argument: '$1'" &&
+			usage &&
+			exit 1
+
+		[ "$1" = "raw" ] &&
+			get_services "all" ||
+			get_services "all" | sed "s/<|sep|>/ | /g;s/<|$profile_name://g;s/|>//g"
+		;;
+
+	launch)
+		[ "$1" = "all" ] &&
+			urls="$(get_services all | sed 's/.*<|sep|>//g')" ||
+			urls="$(get_services "$(get_search_query "$@")")"
+
+		[ -n "$urls" ] &&
+			launch_services "$urls" ||
+			(print_log "No valid services provided. Exiting..." && exit 1)
+		;;
+
+	delete)
+		[ "$#" -ne 1 ] &&
+			print_log "Only one service can be deleted a time." &&
+			usage &&
+			exit 1
+
+		if [ "$1" = "all" ]; then
+			printf "%s" "$profile_name: Are you sure you want to delete all your services? (y/N): "
+			read -r confirm
+			case "$confirm" in
+			y | Y)
+				rm "$services_file" &&
+					print_log "All services deleted."
+				;;
+			*)
+				print_log "No services deleted."
+				;;
+			esac
+
+		else
+			services="$(get_services "$(get_search_query "$1")")"
+
+			if [ -n "$services" ]; then
+				sed -in "/^<|$profile_name:$1|>/Id" "$services_file" &&
+					print_log "Service '$1' deleted"
+
+				[ "$(cat "$services_file" | wc -l)" -eq 0 ] && rm "$services_file"
+			fi
+
+		fi
+		;;
+
+	*)
+		print_log "Invalid action: '$action'"
+		usage
+		exit 1
+		;;
+
+	esac
+}
+
+test() {
+	echo "hello"
+}
+
+([ "$command" != "init" ] && [ "$command" != "test" ] && [ ! -d "$profile_dir" ]) &&
+	print_log "App not initialized. run '$profile_name init' before running a command." &&
+	exit 1
+
+([ "$command" = "init" ] && [ "$#" -gt 0 ]) &&
+	print_log "Unrecognized action '$1'" &&
+	usage &&
+	exit 1
+
+case "$command" in
+
+init | service | workspace | test)
+	"$command" "$@"
+	;;
+*)
+	print_log "Invalid Option '$command'"
+	usage
+	exit 1
+	;;
+esac
