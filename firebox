@@ -230,6 +230,10 @@ delete() {
 	print_log "from Firefox's profile manager by running 'firefox -ProfileManager'."
 }
 
+workspace() {
+  echo "$workspaces_file"
+}
+
 test() {
 	echo "hello"
 }
