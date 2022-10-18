@@ -132,7 +132,7 @@ launch_services() {
 	fi
 
 	# shellcheck disable=2116,2046
-	firefox -P "$profile_name" --class "pwa" $(echo "$urls")
+	firefox -P "$profile_name" --class "$profile_name" $(echo "$urls")
 }
 
 service() {
@@ -237,7 +237,7 @@ test() {
 }
 
 ([ "$command" != "init" ] && [ "$command" != "test" ] && [ ! -d "$profile_dir" ]) &&
-	print_log "App not initialized. run '$profile_name init' before running a command." &&
+	print_log "App not initialized. run '$NAME init' before running a command." &&
 	exit 1
 
 ([ "$command" = "init" ] && [ "$#" -gt 0 ]) &&
