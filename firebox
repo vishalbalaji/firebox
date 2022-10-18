@@ -113,7 +113,7 @@ get_search_query() {
 get_services() {
 	if [ -z "$1" ]; then
 		echo ''
-	elif [ "$1" = "all" ]; then
+	elif [ "$1" = "--all" ]; then
 		cat "$services_file"
 	else
 		grep -iEw "^($1)" "$services_file" | sed 's/.*<|sep|>//g'
@@ -135,7 +135,7 @@ launch_services() {
 
 service() {
 	([ "$1" != "create" ] && [ ! -f "$services_file" ]) &&
-		print_log "No services available. Run '$profile_name service create' to create a service." &&
+		print_log "No services available. Run '$NAME service create' to create a service." &&
 		exit 1
 
 	action="$1"
@@ -145,12 +145,8 @@ service() {
 
 	create)
 		[ "$#" -ne 2 ] &&
-			print_log "Invalid format for service." &&
+			print_log "Invalid format for command." &&
 			usage &&
-			exit 1
-
-		[ "$1" = "all" ] &&
-			print_log "Invalid name for service: '$2'. '$profile_name service launch all' should launch all services by default" &&
 			exit 1
 
 		# TODO: URL validation for $2
@@ -164,19 +160,19 @@ service() {
 			usage &&
 			exit 1
 
-		([ "$1" != "raw" ] && [ "$1" != "" ]) &&
+		([ "$1" != "--raw" ] && [ "$1" != "" ]) &&
 			print_log "Invalid argument: '$1'" &&
 			usage &&
 			exit 1
 
-		[ "$1" = "raw" ] &&
-			get_services "all" ||
-			get_services "all" | sed "s/<|sep|>/ | /g;s/<|$profile_name://g;s/|>//g"
+		[ "$1" = "--raw" ] &&
+			get_services "--all" ||
+			get_services "--all" | sed "s/<|sep|>/ | /g;s/<|$profile_name://g;s/|>//g"
 		;;
 
 	launch)
-		[ "$1" = "all" ] &&
-			urls="$(get_services all | sed 's/.*<|sep|>//g')" ||
+		[ "$1" = "--all" ] &&
+			urls="$(get_services --all | sed 's/.*<|sep|>//g')" ||
 			urls="$(get_services "$(get_search_query "$@")")"
 
 		[ -n "$urls" ] &&
@@ -190,7 +186,7 @@ service() {
 			usage &&
 			exit 1
 
-		if [ "$1" = "all" ]; then
+		if [ "$1" = "--all" ]; then
 			printf "%s" "$profile_name: Are you sure you want to delete all your services? (y/N): "
 			read -r confirm
 			case "$confirm" in
