@@ -52,7 +52,10 @@ init() {
 
 	firefox -CreateProfile "$profile_name $profile_dir"
 
-	# user.js
+  # user.js
+  # BUG:  Find a way to disable Mozilla start page on first launch
+  # TODO: Find better config to hide the 'firefox-view' page
+
 	cat <<eof >"$profile_dir/user.js"
 user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
 user_pref("extensions.activeThemeID", "firefox-compact-dark@mozilla.org");
@@ -60,7 +63,8 @@ user_pref("browser.toolbars.bookmarks.visibility", "never");
 user_pref("browser.sessionstore.restore_tabs_lazily", "never");
 user_pref("browser.sessionstore.resume_from_crash", "never");
 user_pref("browser.sessionstore.restore_on_demand", "never");
-user_pref("browser.uiCustomization.state", "{\"placements\":{\"widget-overflow-fixed-list\":[],\"nav-bar\":[\"back-button\",\"forward-button\",\"stop-reload-button\",\"customizableui-special-spring1\",\"urlbar-container\",\"customizableui-special-spring2\",\"save-to-pocket-button\",\"downloads-button\",\"fxa-toolbar-menu-button\"],\"toolbar-menubar\":[\"menubar-items\"],\"TabsToolbar\":[\"tabbrowser-tabs\",\"alltabs-button\"],\"PersonalToolbar\":[\"import-button\",\"personal-bookmarks\"]},\"seen\":[\"save-to-pocket-button\",\"developer-button\"],\"dirtyAreaCache\":[\"nav-bar\",\"PersonalToolbar\",\"toolbar-menubar\",\"TabsToolbar\"],\"currentVersion\":17,\"newElementCount\":3}");
+
+user_pref("browser.uiCustomization.state", "{\"placements\":{\"widget-overflow-fixed-list\":[\"_af37054b-3ace-46a2-ac59-709e4412bec6_-browser-action\",\"_de22fd49-c9ab-4359-b722-b3febdc3a0b0_-browser-action\",\"_d10d0bf8-f5b5-c8b4-a8b2-2b9879e08c5d_-browser-action\",\"_1bce6a35-61f2-4477-9899-842359eadcef_-browser-action\",\"playbackspeed_waldemar_b-browser-action\",\"_a8332c60-5b6d-41ee-bfc8-e9bb331d34ad_-browser-action\",\"browsec_browsec_com-browser-action\"],\"nav-bar\":[\"back-button\",\"forward-button\",\"stop-reload-button\",\"customizableui-special-spring15\",\"urlbar-container\",\"customizableui-special-spring16\",\"_446900e4-71c2-419f-a6a7-df9c091e268b_-browser-action\",\"cookieautodelete_kennydo_com-browser-action\",\"addon_darkreader_org-browser-action\",\"downloads-button\",\"history-panelmenu\",\"sync-button\",\"preferences-button\"],\"toolbar-menubar\":[\"menubar-items\"],\"TabsToolbar\":[\"tabbrowser-tabs\",\"new-tab-button\",\"alltabs-button\"],\"PersonalToolbar\":[\"import-button\",\"personal-bookmarks\"]},\"seen\":[\"save-to-pocket-button\",\"developer-button\",\"_c961a5ba-dc89-44e9-9e52-93318dd95378_-browser-action\",\"browsec_browsec_com-browser-action\",\"_af37054b-3ace-46a2-ac59-709e4412bec6_-browser-action\",\"_287dcf75-bec6-4eec-b4f6-71948a2eea29_-browser-action\",\"dontfuckwithpaste_raim_ist-browser-action\",\"_setupvpncom-browser-action\",\"cookieautodelete_kennydo_com-browser-action\",\"playbackspeed_waldemar_b-browser-action\",\"_1bce6a35-61f2-4477-9899-842359eadcef_-browser-action\",\"_d10d0bf8-f5b5-c8b4-a8b2-2b9879e08c5d_-browser-action\",\"jid1-zadieub7xozojw_jetpack-browser-action\",\"_c2c003ee-bd69-42a2-b0e9-6f34222cb046_-browser-action\",\"addon_darkreader_org-browser-action\",\"enhancerforyoutube_maximerf_addons_mozilla_org-browser-action\",\"_762f9885-5a13-4abd-9c77-433dcd38b8fd_-browser-action\",\"_41f9e51d-35e4-4b29-af66-422ff81c8b41_-browser-action\",\"firefox-webext_zenmate_com-browser-action\",\"_de22fd49-c9ab-4359-b722-b3febdc3a0b0_-browser-action\",\"tab-stash_condordes_net-browser-action\",\"_a8332c60-5b6d-41ee-bfc8-e9bb331d34ad_-browser-action\",\"_446900e4-71c2-419f-a6a7-df9c091e268b_-browser-action\"],\"dirtyAreaCache\":[\"nav-bar\",\"PersonalToolbar\",\"widget-overflow-fixed-list\",\"toolbar-menubar\",\"TabsToolbar\"],\"currentVersion\":18,\"newElementCount\":18}");
 eof
 
 	# userChrome.css
