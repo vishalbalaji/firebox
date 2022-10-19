@@ -19,7 +19,7 @@ Commands:
 	init         Initialize new profile for PWA
 	service      Commands relating to Services
 	workspace    Commands relating to Workspaces
-	delete       Print instructions to delete all related files
+	clean        Print instructions to delete all related files
 eof
 }
 
@@ -246,6 +246,31 @@ get_workspaces() {
 	fi
 }
 
+add_to_workspace() {
+	! grep -qiEw "^<\|$profile_name:$1\|>" "$workspaces_file" &&
+		print_log "Workspace '$1' does not exist." &&
+		exit 1
+
+	service_list=""
+
+	for i in $2; do
+
+		if grep -qiEw "^<\|$profile_name:$i\|>" "$services_file"; then
+			if ! grep -qiEw "^<\|$profile_name:$1\|>.*<\|sep\|>$i" "$workspaces_file"; then
+				print_log "Adding service '$i'."
+				service_list="$service_list<|sep|>$i"
+			else
+				print_log "Service '$i' already exists in workspace."
+			fi
+		else
+			print_log "Service '$i' does not exist. Ignoring..."
+		fi
+
+	done
+
+	sed -in "s/^<|$profile_name:$1|>.*/&$service_list/I" "$workspaces_file"
+}
+
 workspace() {
 	([ "$1" != "create" ] && [ ! -f "$workspaces_file" ]) &&
 		print_log "No workspaces available. Run '$NAME workspace create' to create a workspace." &&
@@ -278,7 +303,24 @@ workspace() {
 
 		[ "$1" = "--raw" ] &&
 			get_workspaces "--all" ||
-			get_workspaces "--all" | sed "s/<|sep|>/ | /g;s/<|$profile_name://g;s/|>//g"
+			get_workspaces "--all" | sed "s/<|sep|>/\n- /g;s/<|$profile_name://g;s/|>/:/g"
+		;;
+
+	add)
+		[ "$#" -lt 2 ] &&
+			print_log "Invalid format for command." &&
+			usage &&
+			exit 1
+
+		[ ! -f "$services_file" ] &&
+			print_log "No services available. Run '$NAME service create' to create a service." &&
+			exit 1
+
+		workspace_name="$1"
+		shift
+		services="$*"
+
+		add_workspace "$workspace_name" "$services"
 		;;
 
 	*)
@@ -291,7 +333,7 @@ workspace() {
 
 }
 
-delete() {
+clean() {
 	print_log "You can delete the created profile and all associated data"
 	print_log "from Firefox's profile manager by running 'firefox -ProfileManager'."
 }
@@ -311,7 +353,7 @@ test() {
 
 case "$command" in
 
-init | service | workspace | delete | test)
+init | service | workspace | clean | test)
 	"$command" "$@"
 	;;
 *)
