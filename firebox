@@ -135,7 +135,7 @@ launch_services() {
 	fi
 
 	# shellcheck disable=2086
-	firefox -P "$profile_name" --class "$profile_name" $urls
+	setsid -f firefox -P "$profile_name" --class "$profile_name" $urls >/dev/null 2>&1
 }
 
 service() {
