@@ -19,7 +19,7 @@ Commands:
 	init         Initialize new profile for PWA
 	service      Commands relating to Services
 	workspace    Commands relating to Workspaces
-	delete       Delete all related files
+	delete       Print instructions to delete all related files
 eof
 }
 
@@ -52,8 +52,8 @@ init() {
 
 	firefox -CreateProfile "$profile_name $profile_dir"
 
-  # user.js
-  # BUG:  Find a way to disable Mozilla start page on first launch
+	# user.js
+	# BUG:  Find a way to disable Mozilla start page on first launch
 
 	cat <<eof >"$profile_dir/user.js"
 user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
@@ -223,17 +223,81 @@ service() {
 	esac
 }
 
-delete() {
-	print_log "You can delete the newly created profile and all associated data"
-	print_log "from Firefox's profile manager by running 'firefox -ProfileManager'."
+create_workspace() {
+	[ ! -f "$workspaces_file" ] &&
+		touch "$workspaces_file"
+
+	grep -qiEw "^<\|$profile_name:$1\|>" "$workspaces_file" &&
+		print_log "Workspace '$1' already exists." &&
+		exit 1
+
+	echo "<|$profile_name:$1|>" >>"$workspaces_file"
+	print_log "Created workspace: $1"
+}
+
+get_workspaces() {
+	if [ -z "$1" ]; then
+		echo ''
+	elif [ "$1" = "--all" ]; then
+		cat "$workspaces_file"
+	else
+		echo "workspaces"
+		# grep -iEw "^($1)" "$workspaces_file" | sed 's/.*<|sep|>//g'
+	fi
 }
 
 workspace() {
-  echo "$workspaces_file"
+	([ "$1" != "create" ] && [ ! -f "$workspaces_file" ]) &&
+		print_log "No workspaces available. Run '$NAME workspace create' to create a workspace." &&
+		exit 1
+
+	action="$1"
+	shift
+
+	case "$action" in
+
+	create)
+		[ "$#" -ne 1 ] &&
+			print_log "Invalid format for command." &&
+			usage &&
+			exit 1
+
+		create_workspace "$1"
+		;;
+
+	list)
+		[ "$#" -gt 1 ] &&
+			print_log "Unkown argument: '$1'" &&
+			usage &&
+			exit 1
+
+		([ "$1" != "--raw" ] && [ "$1" != "" ]) &&
+			print_log "Invalid argument: '$1'" &&
+			usage &&
+			exit 1
+
+		[ "$1" = "--raw" ] &&
+			get_workspaces "--all" ||
+			get_workspaces "--all" | sed "s/<|sep|>/ | /g;s/<|$profile_name://g;s/|>//g"
+		;;
+
+	*)
+		print_log "Invalid action: '$action'"
+		usage
+		exit 1
+		;;
+
+	esac
+
+}
+
+delete() {
+	print_log "You can delete the created profile and all associated data"
+	print_log "from Firefox's profile manager by running 'firefox -ProfileManager'."
 }
 
 test() {
-	echo "hello"
+	firefox -P "$profile_name" --class "$profile_name"
 }
 
 ([ "$command" != "init" ] && [ "$command" != "test" ] && [ ! -d "$profile_dir" ]) &&
