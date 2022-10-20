@@ -205,15 +205,14 @@ service() {
 			esac
 
 		else
-			services="$(get_services "$(get_search_query "$1")")"
-
-			if [ -n "$services" ]; then
-				sed -in "/^<|$profile_name:$1|>/Id" "$services_file" &&
-					print_log "Service '$1' deleted"
+			if ! grep -qiEw "^<\|$profile_name:$1\|>" "$workspaces_file"; then
+				print_log "Workspace '$1' does not exist."
+			else
+				sed -in "/^<|$profile_name:$1|>/Id" "$workspaces_file" &&
+					print_log "Workspace '$1' deleted"
 
 				[ "$(cat "$services_file" | wc -l)" -eq 0 ] && rm "$services_file"
 			fi
-
 		fi
 		;;
 
@@ -225,6 +224,7 @@ service() {
 
 	esac
 }
+# [ "$(cat "$services_file" | wc -l)" -eq 0 ] && rm "$services_file"
 
 create_workspace() {
 	[ ! -f "$workspaces_file" ] &&
@@ -371,12 +371,36 @@ workspace() {
 		;;
 
 	delete)
-		[ "$#" -gt 1 ] &&
-			print_log "Can only delete one workspace at a time." &&
+		[ "$#" -ne 1 ] &&
+			print_log "Only one workspace can be deleted a time." &&
 			usage &&
 			exit 1
 
-		echo "delete"
+		if [ "$1" = "--all" ]; then
+			printf "%s" "$profile_name: Are you sure you want to delete all your workspaces? (y/N): "
+			read -r confirm
+			case "$confirm" in
+			y | Y)
+				rm "$workspaces_file" &&
+					print_log "All workspaces deleted."
+				;;
+			*)
+				print_log "No workspaces deleted."
+				;;
+			esac
+
+		else
+			if ! grep -qiEw "^<\|$profile_name:$1\|>" "$workspaces_file"; then
+				print_log "Workspace '$1' does not exist."
+			else
+				sed -in "/^<|$profile_name:$1|>/Id" "$workspaces_file" &&
+					print_log "Workspace '$1' deleted"
+
+				[ "$(cat "$workspaces_file" | wc -l)" -eq 0 ] && rm "$workspaces_file"
+			fi
+
+		fi
+
 		;;
 
 	*)
