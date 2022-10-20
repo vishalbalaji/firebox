@@ -84,7 +84,7 @@ init() {
 	firefox -CreateProfile "$profile_name $profile_dir"
 
 	# user.js
-	# BUG:  Find a way to disable Mozilla start page on first launch
+	# TODO:  Find a way to disable Mozilla start page on first launch
 
 	cat <<eof >"$profile_dir/user.js"
 user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
@@ -324,7 +324,6 @@ remove_from_workspace() {
 	done
 }
 
-# TODO: add delete feat
 workspace() {
 	([ "$1" = "-h" ] || [ "$1" = "--help" ]) &&
 		usage_workspace &&
@@ -457,7 +456,7 @@ clean() {
 }
 
 test() {
-	firefox -P "$profile_name" --class "$profile_name"
+	echo "test"
 }
 
 ([ "$command" != "init" ] && [ "$command" != "test" ] && [ ! -d "$profile_dir" ]) &&
@@ -471,7 +470,7 @@ test() {
 
 case "$command" in
 
-init | service | workspace | clean | test)
+init | service | workspace | clean)
 	"$command" "$@"
 	;;
 *)
