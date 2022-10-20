@@ -7,25 +7,27 @@ print_log() {
 	echo "$NAME: $1" >&2
 }
 
-# TODO: add usage for service and workspace
 usage() {
-	cat <<eof
-Usage: $NAME <command> <action>
+  cat <<eof
+Usage: $NAME (<option> | <command> <action>)
 
 Options:
-	-h --help   Print this help text and exit.
+  -h --help   Print this help text and exit.
 
 Commands:
-	init         Initialize new profile for PWA.
-	service      Commands relating to Services.
-	workspace    Commands relating to Workspaces.
-	clean        Print instructions to delete all related files.
+  init         Initialize new profile for PWA.
+  service      Commands relating to Services.
+  workspace    Commands relating to Workspaces.
+  clean        Print instructions to delete all related files.
 eof
 }
 
 usage_service() {
-	cat <<eof
+  cat <<eof
 Usage: $NAME service <action>
+
+Options:
+  -h --help   Print this help text and exit.
 
 Actions:
   create <name> <url>                          Create new service.
@@ -36,8 +38,11 @@ eof
 }
 
 usage_workspace() {
-	cat <<eof
+  cat <<eof
 Usage: $NAME workspace <action>
+
+Options:
+  -h --help   Print this help text and exit.
 
 Actions:
   create <name>                                       Create new workspace.
@@ -165,6 +170,10 @@ launch_services() {
 }
 
 service() {
+	([ "$1" = "-h" ] || [ "$1" = "--help" ]) &&
+		usage_service &&
+		exit
+
 	([ "$1" != "create" ] && [ ! -f "$services_file" ]) &&
 		print_log "No services available. Run '$NAME service create' to create a service." &&
 		exit 1
@@ -317,6 +326,10 @@ remove_from_workspace() {
 
 # TODO: add delete feat
 workspace() {
+	([ "$1" = "-h" ] || [ "$1" = "--help" ]) &&
+		usage_workspace &&
+		exit
+
 	([ "$1" != "create" ] && [ ! -f "$workspaces_file" ]) &&
 		print_log "No workspaces available. Run '$NAME workspace create' to create a workspace." &&
 		exit 1
