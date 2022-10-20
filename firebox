@@ -13,13 +13,25 @@ usage() {
 Usage: $NAME <command> <action>
 
 Options:
-	-h, --help   Print this help text and exit
+	-h --help   Print this help text and exit.
 
 Commands:
-	init         Initialize new profile for PWA
-	service      Commands relating to Services
-	workspace    Commands relating to Workspaces
-	clean        Print instructions to delete all related files
+	init         Initialize new profile for PWA.
+	service      Commands relating to Services.
+	workspace    Commands relating to Workspaces.
+	clean        Print instructions to delete all related files.
+eof
+}
+
+usage_service() {
+	cat <<eof
+Usage: $NAME service <action>
+
+Actions:
+  create <name> <url>                    Create new service.
+  list [--raw]                           List all available services. Use '--raw' to list services without formatting.
+  launch (--all | <name1> <name2>...)    Launch services. Use '--all' to launch all services.
+  delete (--all | <name>)                Delete service. Use '--all' to delete all services.
 eof
 }
 
@@ -151,7 +163,7 @@ service() {
 	create)
 		[ "$#" -ne 2 ] &&
 			print_log "Invalid format for command." &&
-			usage &&
+			usage_service &&
 			exit 1
 
 		# TODO: URL validation for $2
@@ -162,7 +174,7 @@ service() {
 	list)
 		[ "$#" -gt 1 ] &&
 			print_log "Unkown argument: '$1'" &&
-			usage &&
+			usage_service &&
 			exit 1
 
 		([ "$1" != "--raw" ] && [ "$1" != "" ]) &&
@@ -188,7 +200,7 @@ service() {
 	delete)
 		[ "$#" -ne 1 ] &&
 			print_log "Only one service can be deleted a time." &&
-			usage &&
+			usage_service &&
 			exit 1
 
 		if [ "$1" = "--all" ]; then
@@ -218,13 +230,12 @@ service() {
 
 	*)
 		print_log "Invalid action: '$action'"
-		usage
+		usage_service
 		exit 1
 		;;
 
 	esac
 }
-# [ "$(cat "$services_file" | wc -l)" -eq 0 ] && rm "$services_file"
 
 create_workspace() {
 	[ ! -f "$workspaces_file" ] &&
