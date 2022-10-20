@@ -28,10 +28,24 @@ usage_service() {
 Usage: $NAME service <action>
 
 Actions:
-  create <name> <url>                    Create new service.
-  list [--raw]                           List all available services. Use '--raw' to list services without formatting.
-  launch (--all | <name1> <name2>...)    Launch services. Use '--all' to launch all services.
-  delete (--all | <name>)                Delete service. Use '--all' to delete all services.
+  create <name> <url>                          Create new service.
+  list [--raw]                                 List all available services. Use '--raw' to list services without formatting.
+  launch (--all | <service1> <service2>...)    Launch services. Use '--all' to launch all services.
+  delete (--all | <name>)                      Delete service. Use '--all' to delete all services.
+eof
+}
+
+usage_workspace() {
+	cat <<eof
+Usage: $NAME workspace <action>
+
+Actions:
+  create <name>                                       Create new workspace.
+  list [--raw]                                        List all available workspaces. Use '--raw' to list workspaces without formatting.
+  add <workspace-name> <service1> <service2>...       Add services to workspace.
+  remove <workspace-name> <service1> <service2>...    Remove services from workspace.
+  launch <name>                                      Launch workspace.
+  delete (--all | <name>)                             Delete workspace. Use '--all' to delete all workspaces.
 eof
 }
 
@@ -179,7 +193,7 @@ service() {
 
 		([ "$1" != "--raw" ] && [ "$1" != "" ]) &&
 			print_log "Invalid argument: '$1'" &&
-			usage &&
+			usage_service &&
 			exit 1
 
 		[ "$1" = "--raw" ] &&
@@ -315,7 +329,7 @@ workspace() {
 	create)
 		[ "$#" -ne 1 ] &&
 			print_log "Invalid format for command." &&
-			usage &&
+			usage_workspace &&
 			exit 1
 
 		create_workspace "$1"
@@ -324,12 +338,12 @@ workspace() {
 	list)
 		[ "$#" -gt 1 ] &&
 			print_log "Unkown argument: '$1'" &&
-			usage &&
+			usage_workspace &&
 			exit 1
 
 		([ "$1" != "--raw" ] && [ "$1" != "" ]) &&
 			print_log "Invalid argument: '$1'" &&
-			usage &&
+			usage_workspace &&
 			exit 1
 
 		[ "$1" = "--raw" ] &&
@@ -340,7 +354,7 @@ workspace() {
 	add)
 		[ "$#" -lt 2 ] &&
 			print_log "Invalid format for command." &&
-			usage &&
+			usage_workspace &&
 			exit 1
 
 		[ ! -f "$services_file" ] &&
@@ -357,7 +371,7 @@ workspace() {
 	launch)
 		[ "$#" -gt 1 ] &&
 			print_log "Can only launch one workspace at a time." &&
-			usage &&
+			usage_workspace &&
 			exit 1
 
 		services="$(get_workspaces "$1")"
@@ -371,7 +385,7 @@ workspace() {
 	remove)
 		[ "$#" -lt 2 ] &&
 			print_log "Invalid format for command." &&
-			usage &&
+			usage_workspace &&
 			exit 1
 
 		workspace_name="$1"
@@ -384,7 +398,7 @@ workspace() {
 	delete)
 		[ "$#" -ne 1 ] &&
 			print_log "Only one workspace can be deleted a time." &&
-			usage &&
+			usage_workspace &&
 			exit 1
 
 		if [ "$1" = "--all" ]; then
@@ -416,7 +430,7 @@ workspace() {
 
 	*)
 		print_log "Invalid action: '$action'"
-		usage
+		usage_workspace
 		exit 1
 		;;
 
