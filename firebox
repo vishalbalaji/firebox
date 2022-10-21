@@ -2,6 +2,7 @@
 # shellcheck disable=2235,2002,2015
 
 NAME=$(basename "$0")
+VERSION="0.1.0"
 
 print_log() {
 	echo "$NAME: $1" >&2
@@ -12,7 +13,8 @@ usage() {
 Usage: $NAME (<option> | <command> <action>)
 
 Options:
-  -h --help   Print this help text and exit.
+  -h --help      Print this help text and exit.
+  -v --version   Print the current version and exit.
 
 Commands:
   init         Initialize new profile for PWA.
@@ -61,6 +63,10 @@ command=""
 case "$1" in
 -h | --help)
 	usage
+	exit 0
+	;;
+-v | --version)
+  echo "$VERSION"
 	exit 0
 	;;
 *)
