@@ -8,7 +8,7 @@ print_log() {
 }
 
 usage() {
-  cat <<eof
+	cat <<eof
 Usage: $NAME (<option> | <command> <action>)
 
 Options:
@@ -23,7 +23,7 @@ eof
 }
 
 usage_service() {
-  cat <<eof
+	cat <<eof
 Usage: $NAME service <action>
 
 Options:
@@ -38,7 +38,7 @@ eof
 }
 
 usage_workspace() {
-  cat <<eof
+	cat <<eof
 Usage: $NAME workspace <action>
 
 Options:
@@ -169,6 +169,8 @@ launch_services() {
 	setsid -f firefox -P "$profile_name" --class "$profile_name" $urls >/dev/null 2>&1
 }
 
+# BUG: Escape URLs
+# TODO: add edit service
 service() {
 	([ "$1" = "-h" ] || [ "$1" = "--help" ]) &&
 		usage_service &&
@@ -249,6 +251,18 @@ service() {
 				[ "$(cat "$services_file" | wc -l)" -eq 0 ] && rm "$services_file"
 			fi
 		fi
+		;;
+
+	edit)
+		[ "$#" -ne 2 ] &&
+			print_log "Invalid format for command." &&
+			usage_service &&
+			exit 1
+
+		grep -qiEw "^<\|$profile_name:$1\|>" "$services_file" &&
+			(sed -in "/<|$profile_name:$1|>/{s/<|sep|>.*/<|sep|>$2/}" "$services_file" &&
+				print_log "Edited service '$1' to '$2'") ||
+			print_log "Service '$1' does not exist."
 		;;
 
 	*)
@@ -469,7 +483,6 @@ test() {
 	exit 1
 
 case "$command" in
-
 init | service | workspace | clean)
 	"$command" "$@"
 	;;
