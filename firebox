@@ -66,7 +66,7 @@ case "$1" in
 	exit 0
 	;;
 -v | --version)
-  echo "$VERSION"
+	echo "$VERSION"
 	exit 0
 	;;
 *)
@@ -82,6 +82,21 @@ profile_dir="$HOME/.local/share/$profile_name"
 services_file="$profile_dir/$profile_name-services"
 workspaces_file="$profile_dir/$profile_name-workspaces"
 
+userchrome() {
+	echo '@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");browser{margin-right:-14px;margin-bottom:-14px}#alltabs-button,#nav-bar{visibility:collapse}.tab-close-button,.tab-label-container,tab[first-visible-tab=true][last-visible-tab=true],tab[first-visible-tab=true][last-visible-tab=true]+#tabbrowser-arrowscrollbox-periphery{display:none!important}.tabbrowser-tab{min-width:35px!important;-moz-box-flex:0!important}.tab-icon-overlay{opacity:1!important;stroke:var(--tab-icon-overlay-stroke)!important;top:-5.5px!important;inset-inline-end:-6px!important;padding:2px!important;z-index:1!important}#tabbrowser-arrowscrollbox,#tabbrowser-tabs{min-height:0!important}'
+}
+
+userjs() {
+	echo 'user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);'
+	echo 'user_pref("extensions.activeThemeID", "firefox-compact-dark@mozilla.org");'
+	echo 'user_pref("browser.toolbars.bookmarks.visibility", "never");'
+	echo 'user_pref("browser.startup.homepage", "");'
+	echo 'user_pref("browser.sessionstore.restore_tabs_lazily", "never");'
+	echo 'user_pref("browser.sessionstore.resume_from_crash", "never");'
+	echo 'user_pref("browser.sessionstore.restore_on_demand", "never");'
+	echo 'user_pref("browser.uiCustomization.state", "{\"placements\":{\"widget-overflow-fixed-list\":[],\"nav-bar\":[],\"toolbar-menubar\":[],\"TabsToolbar\":[],\"PersonalToolbar\":[]},\"seen\":[],\"dirtyAreaCache\":[],\"currentVersion\":18,\"newElementCount\":18}");'
+}
+
 init() {
 	[ -d "$profile_dir" ] &&
 		print_log "Profile already exists." &&
@@ -92,38 +107,11 @@ init() {
 	# user.js
 	# TODO:  Find a way to disable Mozilla start page on first launch
 
-	cat <<eof >"$profile_dir/user.js"
-user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
-user_pref("extensions.activeThemeID", "firefox-compact-dark@mozilla.org");
-user_pref("browser.toolbars.bookmarks.visibility", "never");
-user_pref("browser.startup.homepage", "");
-user_pref("browser.sessionstore.restore_tabs_lazily", "never");
-user_pref("browser.sessionstore.resume_from_crash", "never");
-user_pref("browser.sessionstore.restore_on_demand", "never");
-user_pref("browser.uiCustomization.state", "{\"placements\":{\"widget-overflow-fixed-list\":[],\"nav-bar\":[],\"toolbar-menubar\":[],\"TabsToolbar\":[],\"PersonalToolbar\":[]},\"seen\":[],\"dirtyAreaCache\":[],\"currentVersion\":18,\"newElementCount\":18}");
-eof
+	userjs >"$profile_dir/user.js"
 
 	# userChrome.css
 	mkdir -p "$profile_dir/chrome"
-	cat <<eof >"$profile_dir/chrome/userChrome.css"
-@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"); /* set default namespace to XUL */
-browser {margin-right: -14px; margin-bottom: -14px;}
-
-#nav-bar { visibility: collapse; }
-
-#alltabs-button { visibility: collapse; }
-
-.tab-label-container, .tab-close-button { display: none !important }
-.tabbrowser-tab {min-width: 35px !important; -moz-box-flex: 0 !important; }
-.tab-icon-overlay {
-	opacity: 1 !important;
-	stroke: var(--tab-icon-overlay-stroke) !important;
-	top: -5.5px !important;
-	inset-inline-end: -6px !important;
-	padding: 2px !important;
-	z-index: 1 !important;
-}
-eof
+	userchrome >"$profile_dir/chrome/userChrome.css"
 
 	echo "Profile '$profile_name' created at: $profile_dir."
 }
