@@ -80,6 +80,8 @@ profile_name="$NAME"
 profile_dir="$HOME/.local/share/$profile_name"
 services_file="$profile_dir/$profile_name-services"
 workspaces_file="$profile_dir/$profile_name-workspaces"
+default_bookmark_file="$profile_dir/$profile_name-default_bookmarks"
+sep="<|$profile_name:sep|>"
 
 userchrome() {
 	echo '@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");browser{margin-right:-14px;margin-bottom:-14px}#alltabs-button,#nav-bar{visibility:collapse}.tab-close-button,.tab-label-container,tab[first-visible-tab=true][last-visible-tab=true],tab[first-visible-tab=true][last-visible-tab=true]+#tabbrowser-arrowscrollbox-periphery{display:none!important}.tabbrowser-tab{min-width:35px!important;-moz-box-flex:0!important}.tab-icon-overlay{opacity:1!important;stroke:var(--tab-icon-overlay-stroke)!important;top:-5.5px!important;inset-inline-end:-6px!important;padding:2px!important;z-index:1!important}#tabbrowser-arrowscrollbox,#tabbrowser-tabs{min-height:0!important}'
@@ -213,10 +215,10 @@ service() {
 		;;
 
 	launch)
-    if [ -f "/tmp/firebox_explorer" ]; then
-      print_log "Cannot launch services when Explorer is running..."
-      exit 1
-    fi
+		if [ -f "/tmp/firebox_explorer" ]; then
+			print_log "Cannot launch services when Explorer is running..."
+			exit 1
+		fi
 
 		[ "$1" = "--all" ] &&
 			urls="$(get_services --all | sed 's/.*<|sep|>//g')" ||
@@ -255,7 +257,7 @@ service() {
 				sed -in "/^<|$profile_name:$1|>/Id" "$services_file" &&
 					print_log "Service '$1' deleted"
 
-				[ "$(cat "$services_file" | wc -l)" -eq 0 ] && rm "$services_file"
+				[ "$(wc -l <"$services_file")" -eq 0 ] && rm "$services_file"
 			fi
 		fi
 		;;
@@ -409,10 +411,10 @@ workspace() {
 		;;
 
 	launch)
-    if [ -f "/tmp/firebox_explorer" ]; then
-      print_log "Cannot launch workspace when Explorer is running..."
-      exit 1
-    fi
+		if [ -f "/tmp/firebox_explorer" ]; then
+			print_log "Cannot launch workspace when Explorer is running..."
+			exit 1
+		fi
 
 		[ "$#" -gt 1 ] &&
 			print_log "Can only launch one workspace at a time." &&
@@ -450,7 +452,7 @@ workspace() {
 
 		if [ "$1" = "--all" ]; then
 			printf "%s" "$profile_name: Are you sure you want to delete all your workspaces? (y/N): "
-			read -r confirm
+			read -r confirm </dev/tty
 			case "$confirm" in
 			y | Y)
 				rm "$workspaces_file" &&
@@ -468,7 +470,7 @@ workspace() {
 				sed -in "/^<|$profile_name:$1|>/Id" "$workspaces_file" &&
 					print_log "Workspace '$1' deleted"
 
-				[ "$(cat "$workspaces_file" | wc -l)" -eq 0 ] && rm "$workspaces_file"
+				[ "$(wc -l <"$workspaces_file")" -eq 0 ] && rm "$workspaces_file"
 			fi
 
 		fi
@@ -490,15 +492,69 @@ clean() {
 	print_log "from Firefox's profile manager by running 'firefox -ProfileManager'."
 }
 
+save_bookmarks() {
+	sqlite3 -separator "$sep" "$profile_dir/places.sqlite" 'select b.title,p.url from moz_bookmarks as b,moz_places as p where b.fk=p.id' >/tmp/tmp_bookmarks
+
+	new_bookmarks="$(grep -vf "$default_bookmark_file" /tmp/tmp_bookmarks)"
+
+	if [ -n "$new_bookmarks" ]; then
+		echo "Changes:"
+		echo
+		echo "$new_bookmarks" | sed 's/<|firebox:sep|>/\n  - /g'
+		echo
+
+		printf "%s" "$profile_name: Do you want to add the above services? (y/N): "
+		read -r confirm </dev/tty
+
+		case "$confirm" in
+		y | Y)
+			# TODO: Implement logic to add services
+			print_log "Services updated!"
+			# NOTE: Temporary. Remove when logic to add services is implemented.
+			cp /tmp/places.sqlite "$profile_dir/places.sqlite"
+			;;
+		*)
+			print_log "No changes made to existing services."
+			cp /tmp/places.sqlite "$profile_dir/places.sqlite"
+			;;
+		esac
+
+	else
+		print_log "No changes made to existing services."
+	fi
+
+	rm /tmp/tmp_bookmarks
+}
+
 explorer() {
-  touch /tmp/firebox_explorer
+	touch /tmp/firebox_explorer
 	sed -i '/toolkit.legacyUserProfileCustomizations.stylesheets/{s/true/false/}' "$profile_dir/user.js"
 
-	# shellcheck disable=2068
-	firefox -P "$profile_name" --class "$profile_name" >/dev/null 2>&1
+	(
+		# shellcheck disable=2068
+		firefox -P "$profile_name" --class "$profile_name" >/dev/null 2>&1 &&
+			([ -f /tmp/places.sqlite ] && save_bookmarks) &&
+			sed -i '/toolkit.legacyUserProfileCustomizations.stylesheets/{s/false/true/}' "$profile_dir/user.js" &&
+			rm /tmp/firebox_explorer &&
+			([ -f /tmp/places.sqlite ] && rm /tmp/places.sqlite)
+	) &
 
-	sed -i '/toolkit.legacyUserProfileCustomizations.stylesheets/{s/false/true/}' "$profile_dir/user.js"
-  rm /tmp/firebox_explorer
+	if [ ! -f "$default_bookmark_file" ]; then
+		while true; do
+			if [ ! -f "$profile_dir/places.sqlite" ]; then
+				sleep 1s
+			else
+				break
+			fi
+		done
+		cp "$profile_dir/places.sqlite" /tmp/places.sqlite
+		sqlite3 -separator "$sep" /tmp/places.sqlite 'select b.title,p.url from moz_bookmarks as b,moz_places as p where b.fk=p.id' >"$default_bookmark_file"
+		print_log "copied"
+	else
+		cp "$profile_dir/places.sqlite" /tmp/places.sqlite
+	fi
+
+	wait
 }
 
 test() {
