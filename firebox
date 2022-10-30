@@ -151,20 +151,6 @@ get_services() {
 	fi
 }
 
-launch_firebox() {
-	flag="$1"
-	[ "$flag" = "--no-style" ] &&
-		sed -i '/toolkit.legacyUserProfileCustomizations.stylesheets/{s/true/false/}' "$profile_dir/user.js" &&
-		shift
-
-	# shellcheck disable=2068
-	setsid -f firefox -P "$profile_name" --class "$profile_name" $@ >/dev/null 2>&1
-
-	[ "$flag" = "--no-style" ] &&
-		(sleep 1s &&
-			sed -i '/toolkit.legacyUserProfileCustomizations.stylesheets/{s/false/true/}' "$profile_dir/user.js") &
-}
-
 launch_services() {
 	urls=""
 
@@ -174,8 +160,8 @@ launch_services() {
 		urls="-new-window $1"
 	fi
 
-	launch_firebox "$urls"
-
+	# shellcheck disable=2086
+	setsid -f firefox -P "$profile_name" --class "$profile_name" $urls >/dev/null 2>&1
 }
 
 # BUG: Escape URLs
@@ -227,6 +213,11 @@ service() {
 		;;
 
 	launch)
+    if [ -f "/tmp/firebox_explorer" ]; then
+      print_log "Cannot launch services when Explorer is running..."
+      exit 1
+    fi
+
 		[ "$1" = "--all" ] &&
 			urls="$(get_services --all | sed 's/.*<|sep|>//g')" ||
 			urls="$(get_services "$(get_search_query "$@")")"
@@ -418,6 +409,11 @@ workspace() {
 		;;
 
 	launch)
+    if [ -f "/tmp/firebox_explorer" ]; then
+      print_log "Cannot launch workspace when Explorer is running..."
+      exit 1
+    fi
+
 		[ "$#" -gt 1 ] &&
 			print_log "Can only launch one workspace at a time." &&
 			usage_workspace &&
@@ -494,8 +490,19 @@ clean() {
 	print_log "from Firefox's profile manager by running 'firefox -ProfileManager'."
 }
 
+explorer() {
+  touch /tmp/firebox_explorer
+	sed -i '/toolkit.legacyUserProfileCustomizations.stylesheets/{s/true/false/}' "$profile_dir/user.js"
+
+	# shellcheck disable=2068
+	firefox -P "$profile_name" --class "$profile_name" >/dev/null 2>&1
+
+	sed -i '/toolkit.legacyUserProfileCustomizations.stylesheets/{s/false/true/}' "$profile_dir/user.js"
+  rm /tmp/firebox_explorer
+}
+
 test() {
-	launch_firebox --no-style google.com youtube.com
+	echo "$FIREBOX_EXPLORER"
 }
 
 if [ "$command" != "init" ] && [ "$command" != "test" ] && [ ! -d "$profile_dir" ]; then
@@ -510,7 +517,7 @@ if [ "$command" = "init" ] && [ "$#" -gt 0 ]; then
 fi
 
 case "$command" in
-init | service | workspace | clean | test)
+init | service | workspace | clean | test | explorer)
 	"$command" "$@"
 	;;
 *)
