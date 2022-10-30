@@ -1,5 +1,4 @@
 #!/bin/sh
-# shellcheck disable=2235,2002,2015
 
 NAME=$(basename "$0")
 VERSION="0.1.0"
@@ -132,9 +131,11 @@ get_search_query() {
 	query=""
 
 	for i in "$@"; do
-		grep -qiEw "^<\|$profile_name:$i\|>" "$services_file" &&
-			query="$query<\|$profile_name:$i\|>|" ||
+		if grep -qiEw "^<\|$profile_name:$i\|>" "$services_file"; then
+			query="$query<\|$profile_name:$i\|>|"
+		else
 			print_log "Service '$i' does not exist. Ignoring..."
+		fi
 	done
 
 	echo "$query" | sed 's/|$//'
@@ -150,6 +151,20 @@ get_services() {
 	fi
 }
 
+launch_firebox() {
+	flag="$1"
+	[ "$flag" = "--no-style" ] &&
+		sed -i '/toolkit.legacyUserProfileCustomizations.stylesheets/{s/true/false/}' "$profile_dir/user.js" &&
+		shift
+
+	# shellcheck disable=2068
+	setsid -f firefox -P "$profile_name" --class "$profile_name" $@ >/dev/null 2>&1
+
+	[ "$flag" = "--no-style" ] &&
+		(sleep 1s &&
+			sed -i '/toolkit.legacyUserProfileCustomizations.stylesheets/{s/false/true/}' "$profile_dir/user.js") &
+}
+
 launch_services() {
 	urls=""
 
@@ -159,20 +174,22 @@ launch_services() {
 		urls="-new-window $1"
 	fi
 
-	# shellcheck disable=2086
-	setsid -f firefox -P "$profile_name" --class "$profile_name" $urls >/dev/null 2>&1
+	launch_firebox "$urls"
+
 }
 
 # BUG: Escape URLs
 # TODO: add edit service
 service() {
-	([ "$1" = "-h" ] || [ "$1" = "--help" ]) &&
+	if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
 		usage_service &&
-		exit
+			exit
+	fi
 
-	([ "$1" != "create" ] && [ ! -f "$services_file" ]) &&
+	if [ "$1" != "create" ] && [ ! -f "$services_file" ]; then
 		print_log "No services available. Run '$NAME service create' to create a service." &&
-		exit 1
+			exit 1
+	fi
 
 	action="$1"
 	shift
@@ -196,14 +213,17 @@ service() {
 			usage_service &&
 			exit 1
 
-		([ "$1" != "--raw" ] && [ "$1" != "" ]) &&
+		if [ "$1" != "--raw" ] && [ "$1" != "" ]; then
 			print_log "Invalid argument: '$1'" &&
-			usage_service &&
-			exit 1
+				usage_service &&
+				exit 1
+		fi
 
-		[ "$1" = "--raw" ] &&
-			get_services "--all" ||
+		if [ "$1" = "--raw" ]; then
+			get_services "--all"
+		else
 			get_services "--all" | sed "s/<|sep|>/ | /g;s/<|$profile_name://g;s/|>//g"
+		fi
 		;;
 
 	launch)
@@ -211,9 +231,11 @@ service() {
 			urls="$(get_services --all | sed 's/.*<|sep|>//g')" ||
 			urls="$(get_services "$(get_search_query "$@")")"
 
-		[ -n "$urls" ] &&
-			launch_services "$urls" ||
-			(print_log "No valid services provided. Exiting..." && exit 1)
+		if [ -n "$urls" ]; then
+			launch_services "$urls"
+		else
+			print_log "No valid services provided. Exiting..." && exit 1
+		fi
 		;;
 
 	delete)
@@ -253,10 +275,12 @@ service() {
 			usage_service &&
 			exit 1
 
-		grep -qiEw "^<\|$profile_name:$1\|>" "$services_file" &&
+		if grep -qiEw "^<\|$profile_name:$1\|>" "$services_file"; then
 			(sed -in "/<|$profile_name:$1|>/{s/<|sep|>.*/<|sep|>$2/}" "$services_file" &&
-				print_log "Edited service '$1' to '$2'") ||
+				print_log "Edited service '$1' to '$2'")
+		else
 			print_log "Service '$1' does not exist."
+		fi
 		;;
 
 	*)
@@ -333,13 +357,15 @@ remove_from_workspace() {
 }
 
 workspace() {
-	([ "$1" = "-h" ] || [ "$1" = "--help" ]) &&
+	if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
 		usage_workspace &&
-		exit
+			exit
+	fi
 
-	([ "$1" != "create" ] && [ ! -f "$workspaces_file" ]) &&
+	if [ "$1" != "create" ] && [ ! -f "$workspaces_file" ]; then
 		print_log "No workspaces available. Run '$NAME workspace create' to create a workspace." &&
-		exit 1
+			exit 1
+	fi
 
 	action="$1"
 	shift
@@ -361,14 +387,17 @@ workspace() {
 			usage_workspace &&
 			exit 1
 
-		([ "$1" != "--raw" ] && [ "$1" != "" ]) &&
+		if [ "$1" != "--raw" ] && [ "$1" != "" ]; then
 			print_log "Invalid argument: '$1'" &&
-			usage_workspace &&
-			exit 1
+				usage_workspace &&
+				exit 1
+		fi
 
-		[ "$1" = "--raw" ] &&
-			get_workspaces "--all" ||
+		if [ "$1" = "--raw" ]; then
+			get_workspaces "--all"
+		else
 			get_workspaces "--all" | sed "s/<|sep|>/\n- /g;s/<|$profile_name://g;s/|>/:/g"
+		fi
 		;;
 
 	add)
@@ -397,9 +426,11 @@ workspace() {
 		services="$(get_workspaces "$1")"
 
 		# shellcheck disable=2086
-		[ -n "$services" ] &&
-			service launch $services ||
+		if [ -n "$services" ]; then
+			service launch $services
+		else
 			(print_log "Invalid workspace '$1'." && exit 1)
+		fi
 		;;
 
 	remove)
@@ -464,20 +495,22 @@ clean() {
 }
 
 test() {
-	echo "test"
+	launch_firebox --no-style google.com youtube.com
 }
 
-([ "$command" != "init" ] && [ "$command" != "test" ] && [ ! -d "$profile_dir" ]) &&
+if [ "$command" != "init" ] && [ "$command" != "test" ] && [ ! -d "$profile_dir" ]; then
 	print_log "App not initialized. run '$NAME init' before running a command." &&
-	exit 1
+		exit 1
+fi
 
-([ "$command" = "init" ] && [ "$#" -gt 0 ]) &&
+if [ "$command" = "init" ] && [ "$#" -gt 0 ]; then
 	print_log "Unrecognized action '$1'" &&
-	usage &&
-	exit 1
+		usage &&
+		exit 1
+fi
 
 case "$command" in
-init | service | workspace | clean)
+init | service | workspace | clean | test)
 	"$command" "$@"
 	;;
 *)
