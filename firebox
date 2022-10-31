@@ -233,11 +233,11 @@ create_workspace() {
 	[ ! -f "$workspaces_file" ] &&
 		touch "$workspaces_file"
 
-	grep -qiEw "^<\|$profile_name:$1\|>" "$workspaces_file" &&
+	grep -qiE "^$1$sep_esc" "$workspaces_file" &&
 		print_log "Workspace '$1' already exists." &&
 		exit 1
 
-	echo "<|$profile_name:$1|>" >>"$workspaces_file"
+	echo "$1$sep" >>"$workspaces_file"
 	print_log "Created workspace: $1"
 }
 
@@ -247,12 +247,12 @@ get_workspaces() {
 	elif [ "$1" = "--all" ]; then
 		cat "$workspaces_file"
 	else
-		grep -iEw "^<\|$profile_name:$1\|>" "$workspaces_file" | sed "s/^<|$profile_name:$1|><|sep|>//;s/<|sep|>/ /g"
+		grep -iE "^$1$sep_esc" "$workspaces_file" | sed "s/^$1$sep//;s/$sep/ /g"
 	fi
 }
 
 add_to_workspace() {
-	! grep -qiEw "^<\|$profile_name:$1\|>" "$workspaces_file" &&
+	! grep -qiE "^$1$sep_esc" "$workspaces_file" &&
 		print_log "Workspace '$1' does not exist." &&
 		exit 1
 
@@ -260,10 +260,10 @@ add_to_workspace() {
 
 	for i in $2; do
 
-		if grep -qiEw "^<\|$profile_name:$i\|>" "$services_file"; then
-			if ! grep -qiEw "^<\|$profile_name:$1\|>.*<\|sep\|>$i" "$workspaces_file"; then
+		if grep -qiE "^$i$sep_esc" "$services_file"; then
+			if ! grep -qiE "^$1.*$sep_esc$i" "$workspaces_file"; then
 				print_log "Adding service '$i' to workspace '$1'."
-				service_list="$service_list<|sep|>$i"
+				service_list="$service_list$sep$i"
 			else
 				print_log "Service '$i' already exists in workspace."
 			fi
@@ -273,7 +273,14 @@ add_to_workspace() {
 
 	done
 
-	sed -in "s/^<|$profile_name:$1|>.*/&$service_list/I" "$workspaces_file"
+	if [ -n "$service_list" ]; then
+		service_list="$(echo "$service_list" | sed "s/$sep//")$sep"
+		sed -in "s/^$1$sep.*/&$service_list/I" "$workspaces_file"
+	else
+		print_log "No valid services provided. Exiting." &&
+			exit 1
+	fi
+
 }
 
 remove_from_workspace() {
@@ -333,7 +340,7 @@ workspace() {
 		if [ "$1" = "--raw" ]; then
 			get_workspaces "--all"
 		else
-			get_workspaces "--all" | sed "s/<|sep|>/\n- /g;s/<|$profile_name://g;s/|>/:/g"
+			get_workspaces "--all" | sed "s/$sep\$//;s/$sep/\n  - /g;"
 		fi
 		;;
 
