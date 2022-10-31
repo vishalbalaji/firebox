@@ -85,7 +85,7 @@ sep="<|$profile_name:sep|>"
 sep_esc="<\|$profile_name:sep\|>"
 
 userchrome() {
-	echo '@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");browser{margin-right:-14px;margin-bottom:-14px}#alltabs-button,#nav-bar{visibility:collapse}.tab-close-button,.tab-label-container,tab[first-visible-tab=true][last-visible-tab=true],tab[first-visible-tab=true][last-visible-tab=true]+#tabbrowser-arrowscrollbox-periphery{display:none!important}.tabbrowser-tab{min-width:35px!important;-moz-box-flex:0!important}.tab-icon-overlay{opacity:1!important;stroke:var(--tab-icon-overlay-stroke)!important;top:-5.5px!important;inset-inline-end:-6px!important;padding:2px!important;z-index:1!important}#tabbrowser-arrowscrollbox,#tabbrowser-tabs{min-height:0!important}'
+	echo '@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");browser{margin-right:-14px;margin-bottom:-14px}#alltabs-button,#nav-bar,#sidebar-box,#sidebar-splitter{visibility:collapse}.tab-close-button,.tab-label-container,tab[first-visible-tab=true][last-visible-tab=true],tab[first-visible-tab=true][last-visible-tab=true]+#tabbrowser-arrowscrollbox-periphery{display:none!important}.tabbrowser-tab{min-width:35px!important;-moz-box-flex:0!important}.tab-icon-overlay{opacity:1!important;stroke:var(--tab-icon-overlay-stroke)!important;top:-5.5px!important;inset-inline-end:-6px!important;padding:2px!important;z-index:1!important}#tabbrowser-arrowscrollbox,#tabbrowser-tabs{min-height:0!important}'
 }
 
 userjs() {
@@ -115,7 +115,8 @@ init() {
 	mkdir -p "$profile_dir/chrome"
 	userchrome >"$profile_dir/chrome/userChrome.css"
 
-	echo "Profile '$profile_name' created at: $profile_dir."
+	print_log "Profile '$profile_name' created at: $profile_dir."
+	print_log "Run '$NAME explorer' to create services."
 }
 
 create_service() {
@@ -284,16 +285,16 @@ add_to_workspace() {
 }
 
 remove_from_workspace() {
-	! grep -qiEw "^<\|$profile_name:$1\|>" "$workspaces_file" &&
+	! grep -qiE "^$1$sep_esc" "$workspaces_file" &&
 		print_log "Workspace '$1' does not exist." &&
 		exit 1
 
 	service_list=""
 
 	for i in $2; do
-		if grep -qiEw "^<\|$profile_name:$1\|>.*<\|sep\|>$i" "$workspaces_file"; then
+		if grep -qiE "^$1.*$sep_esc$i" "$workspaces_file"; then
 			print_log "Deleting service '$i' from workspace '$1'."
-			sed -in "/^<|$profile_name:$1|>/I{s/<|sep|>$i//}" "$workspaces_file"
+			sed -in "/^$1$sep/I{s/$sep$i//}" "$workspaces_file"
 		else
 			print_log "Service '$i' does not exist. Ignoring..."
 		fi
@@ -415,17 +416,15 @@ workspace() {
 			esac
 
 		else
-			if ! grep -qiEw "^<\|$profile_name:$1\|>" "$workspaces_file"; then
+			if ! grep -qiE "^$1$sep_esc" "$workspaces_file"; then
 				print_log "Workspace '$1' does not exist."
 			else
-				sed -in "/^<|$profile_name:$1|>/Id" "$workspaces_file" &&
+				sed -in "/^$1$sep/Id" "$workspaces_file" &&
 					print_log "Workspace '$1' deleted"
 
 				[ "$(wc -l <"$workspaces_file")" -eq 0 ] && rm "$workspaces_file"
 			fi
-
 		fi
-
 		;;
 
 	*)
@@ -457,7 +456,7 @@ save_bookmarks() {
 	echo "$existing_bookmarks" | sed 's/<|firebox:sep|>/\n  - /g'
 	echo
 
-	if [ -n "$new_bookmarks" ] && [ "$new_bookmarks" != "$existing_bookmarks" ]; then
+	if [ "$new_bookmarks" != "$existing_bookmarks" ]; then
 		echo "New Services:"
 		echo
 		echo "$new_bookmarks" | sed 's/<|firebox:sep|>/\n  - /g'
@@ -470,6 +469,8 @@ save_bookmarks() {
 		y | Y)
 			echo "$new_bookmarks" >"$services_file"
 
+		[ -z "$new_bookmarks" ] && rm "$services_file"
+
 			print_log "Services updated!"
 			;;
 		*)
@@ -477,6 +478,7 @@ save_bookmarks() {
 			cp /tmp/places.sqlite "$profile_dir/places.sqlite"
 			;;
 		esac
+
 
 	else
 		print_log "No changes made to existing services."
@@ -511,7 +513,6 @@ explorer() {
 		done
 		cp "$profile_dir/places.sqlite" /tmp/places.sqlite
 		sqlite3 -separator "$sep" /tmp/places.sqlite 'select b.title,p.url from moz_bookmarks as b,moz_places as p where b.fk=p.id' >"$default_bookmark_file"
-		print_log "copied"
 	else
 		cp "$profile_dir/places.sqlite" /tmp/places.sqlite
 	fi
