@@ -74,7 +74,7 @@ case "$1" in
 	;;
 esac
 
-# Script start
+## Script start ##
 
 profile_name="$NAME"
 profile_dir="$HOME/.local/share/$profile_name"
@@ -82,6 +82,7 @@ services_file="$profile_dir/$profile_name-services"
 workspaces_file="$profile_dir/$profile_name-workspaces"
 default_bookmark_file="$profile_dir/$profile_name-default_bookmarks"
 sep="<|$profile_name:sep|>"
+sep_esc="<\|$profile_name:sep\|>"
 
 userchrome() {
 	echo '@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");browser{margin-right:-14px;margin-bottom:-14px}#alltabs-button,#nav-bar{visibility:collapse}.tab-close-button,.tab-label-container,tab[first-visible-tab=true][last-visible-tab=true],tab[first-visible-tab=true][last-visible-tab=true]+#tabbrowser-arrowscrollbox-periphery{display:none!important}.tabbrowser-tab{min-width:35px!important;-moz-box-flex:0!important}.tab-icon-overlay{opacity:1!important;stroke:var(--tab-icon-overlay-stroke)!important;top:-5.5px!important;inset-inline-end:-6px!important;padding:2px!important;z-index:1!important}#tabbrowser-arrowscrollbox,#tabbrowser-tabs{min-height:0!important}'
@@ -133,8 +134,9 @@ get_search_query() {
 	query=""
 
 	for i in "$@"; do
-		if grep -qiEw "^<\|$profile_name:$i\|>" "$services_file"; then
-			query="$query<\|$profile_name:$i\|>|"
+		if grep -qiE "^$i$sep_esc" "$services_file"; then
+			query="$query$i|"
+			print_log "Launching service '$i'"
 		else
 			print_log "Service '$i' does not exist. Ignoring..."
 		fi
@@ -149,7 +151,7 @@ get_services() {
 	elif [ "$1" = "--all" ]; then
 		cat "$services_file"
 	else
-		grep -iEw "^($1)" "$services_file" | sed 's/.*<|sep|>//g'
+		grep -iE "^($1)$sep_esc" "$services_file" | sed "s/^.*$sep//g"
 	fi
 }
 
@@ -163,11 +165,9 @@ launch_services() {
 	fi
 
 	# shellcheck disable=2086
-	setsid -f firefox -P "$profile_name" --class "$profile_name" $urls >/dev/null 2>&1
+	setsid -f firefox -P "$profile_name" --class "$profile_name-services" $urls >/dev/null 2>&1
 }
 
-# BUG: Escape URLs
-# TODO: add edit service
 service() {
 	if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
 		usage_service &&
@@ -175,7 +175,7 @@ service() {
 	fi
 
 	if [ "$1" != "create" ] && [ ! -f "$services_file" ]; then
-		print_log "No services available. Run '$NAME service create' to create a service." &&
+		print_log "No services available. Run '$NAME explorer' to create services." &&
 			exit 1
 	fi
 
@@ -183,17 +183,6 @@ service() {
 	shift
 
 	case "$action" in
-
-	create)
-		[ "$#" -ne 2 ] &&
-			print_log "Invalid format for command." &&
-			usage_service &&
-			exit 1
-
-		# TODO: URL validation for $2
-
-		create_service "$1" "$2"
-		;;
 
 	list)
 		[ "$#" -gt 1 ] &&
@@ -210,69 +199,24 @@ service() {
 		if [ "$1" = "--raw" ]; then
 			get_services "--all"
 		else
-			get_services "--all" | sed "s/<|sep|>/ | /g;s/<|$profile_name://g;s/|>//g"
+			get_services "--all" | sed "s/$sep/ | /g"
 		fi
 		;;
 
 	launch)
-		if [ -f "/tmp/firebox_explorer" ]; then
-			print_log "Cannot launch services when Explorer is running..."
-			exit 1
+		if [ -n "$(xdotool search --class "$profile_name-explorer")" ]; then
+			print_log "Cannot launch services while explorer is running" &&
+				exit 1
 		fi
 
 		[ "$1" = "--all" ] &&
-			urls="$(get_services --all | sed 's/.*<|sep|>//g')" ||
+			urls="$(get_services --all | sed "s/.*$sep//g")" ||
 			urls="$(get_services "$(get_search_query "$@")")"
 
 		if [ -n "$urls" ]; then
 			launch_services "$urls"
 		else
 			print_log "No valid services provided. Exiting..." && exit 1
-		fi
-		;;
-
-	delete)
-		[ "$#" -ne 1 ] &&
-			print_log "Only one service can be deleted a time." &&
-			usage_service &&
-			exit 1
-
-		if [ "$1" = "--all" ]; then
-			printf "%s" "$profile_name: Are you sure you want to delete all your services? (y/N): "
-			read -r confirm
-			case "$confirm" in
-			y | Y)
-				rm "$services_file" &&
-					print_log "All services deleted."
-				;;
-			*)
-				print_log "No services deleted."
-				;;
-			esac
-
-		else
-			if ! grep -qiEw "^<\|$profile_name:$1\|>" "$services_file"; then
-				print_log "Service '$1' does not exist."
-			else
-				sed -in "/^<|$profile_name:$1|>/Id" "$services_file" &&
-					print_log "Service '$1' deleted"
-
-				[ "$(wc -l <"$services_file")" -eq 0 ] && rm "$services_file"
-			fi
-		fi
-		;;
-
-	edit)
-		[ "$#" -ne 2 ] &&
-			print_log "Invalid format for command." &&
-			usage_service &&
-			exit 1
-
-		if grep -qiEw "^<\|$profile_name:$1\|>" "$services_file"; then
-			(sed -in "/<|$profile_name:$1|>/{s/<|sep|>.*/<|sep|>$2/}" "$services_file" &&
-				print_log "Edited service '$1' to '$2'")
-		else
-			print_log "Service '$1' does not exist."
 		fi
 		;;
 
@@ -411,9 +355,9 @@ workspace() {
 		;;
 
 	launch)
-		if [ -f "/tmp/firebox_explorer" ]; then
-			print_log "Cannot launch workspace when Explorer is running..."
-			exit 1
+		if [ -n "$(xdotool search --class "$profile_name-explorer")" ]; then
+			print_log "Cannot launch workspaces while explorer is running" &&
+				exit 1
 		fi
 
 		[ "$#" -gt 1 ] &&
@@ -495,10 +439,19 @@ clean() {
 save_bookmarks() {
 	sqlite3 -separator "$sep" "$profile_dir/places.sqlite" 'select b.title,p.url from moz_bookmarks as b,moz_places as p where b.fk=p.id' >/tmp/tmp_bookmarks
 
+	existing_bookmarks=""
+	[ -f "$services_file" ] && existing_bookmarks="$(cat "$services_file")"
+
+	# TODO: show which services were added and which were removed separately.
 	new_bookmarks="$(grep -vf "$default_bookmark_file" /tmp/tmp_bookmarks)"
 
-	if [ -n "$new_bookmarks" ]; then
-		echo "Changes:"
+	echo "Current Services:"
+	echo
+	echo "$existing_bookmarks" | sed 's/<|firebox:sep|>/\n  - /g'
+	echo
+
+	if [ -n "$new_bookmarks" ] && [ "$new_bookmarks" != "$existing_bookmarks" ]; then
+		echo "New Services:"
 		echo
 		echo "$new_bookmarks" | sed 's/<|firebox:sep|>/\n  - /g'
 		echo
@@ -508,10 +461,9 @@ save_bookmarks() {
 
 		case "$confirm" in
 		y | Y)
-			# TODO: Implement logic to add services
+			echo "$new_bookmarks" >"$services_file"
+
 			print_log "Services updated!"
-			# NOTE: Temporary. Remove when logic to add services is implemented.
-			cp /tmp/places.sqlite "$profile_dir/places.sqlite"
 			;;
 		*)
 			print_log "No changes made to existing services."
@@ -527,15 +479,18 @@ save_bookmarks() {
 }
 
 explorer() {
-	touch /tmp/firebox_explorer
+	if [ -n "$(xdotool search --class "$profile_name-services")" ]; then
+		print_log "Cannot launch explorer while services are running" &&
+			exit 1
+	fi
+
 	sed -i '/toolkit.legacyUserProfileCustomizations.stylesheets/{s/true/false/}' "$profile_dir/user.js"
 
 	(
 		# shellcheck disable=2068
-		firefox -P "$profile_name" --class "$profile_name" >/dev/null 2>&1 &&
+		firefox -P "$profile_name" --class "$profile_name-explorer" >/dev/null 2>&1 &&
 			([ -f /tmp/places.sqlite ] && save_bookmarks) &&
 			sed -i '/toolkit.legacyUserProfileCustomizations.stylesheets/{s/false/true/}' "$profile_dir/user.js" &&
-			rm /tmp/firebox_explorer &&
 			([ -f /tmp/places.sqlite ] && rm /tmp/places.sqlite)
 	) &
 
@@ -558,7 +513,7 @@ explorer() {
 }
 
 test() {
-	echo "$FIREBOX_EXPLORER"
+	get_search_query youtube google
 }
 
 if [ "$command" != "init" ] && [ "$command" != "test" ] && [ ! -d "$profile_dir" ]; then
