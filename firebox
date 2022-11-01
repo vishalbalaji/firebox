@@ -83,7 +83,7 @@ sep="<|$profile_name:sep|>"
 sep_esc="<\|$profile_name:sep\|>"
 
 userchrome() {
-	echo '@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");browser{margin-right:-14px;margin-bottom:-14px}#alltabs-button,#nav-bar,#sidebar-box,#sidebar-splitter{visibility:collapse}.tab-close-button,.tab-label-container,tab[first-visible-tab=true][last-visible-tab=true],tab[first-visible-tab=true][last-visible-tab=true]+#tabbrowser-arrowscrollbox-periphery{display:none!important}.tabbrowser-tab{min-width:35px!important;-moz-box-flex:0!important}.tab-icon-overlay{opacity:1!important;stroke:var(--tab-icon-overlay-stroke)!important;top:-5.5px!important;inset-inline-end:-6px!important;padding:2px!important;z-index:1!important}#tabbrowser-arrowscrollbox,#tabbrowser-tabs{min-height:0!important}'
+	echo '@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");#alltabs-button,#nav-bar,#sidebar-box,#sidebar-splitter{visibility:collapse}.tab-close-button,.tab-label-container,tab[first-visible-tab=true][last-visible-tab=true],tab[first-visible-tab=true][last-visible-tab=true]+#tabbrowser-arrowscrollbox-periphery{display:none!important}.tabbrowser-tab{min-width:35px!important;-moz-box-flex:0!important}.tab-icon-overlay{opacity:1!important;stroke:var(--tab-icon-overlay-stroke)!important;top:-5.5px!important;inset-inline-end:-6px!important;padding:2px!important;z-index:1!important}#tabbrowser-arrowscrollbox,#tabbrowser-tabs{min-height:0!important}'
 }
 
 userjs() {
