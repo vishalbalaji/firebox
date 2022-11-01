@@ -31,10 +31,8 @@ Options:
   -h --help   Print this help text and exit.
 
 Actions:
-  create <name> <url>                          Create new service.
   list [--raw]                                 List all available services. Use '--raw' to list services without formatting.
   launch (--all | <service1> <service2>...)    Launch services. Use '--all' to launch all services.
-  delete (--all | <name>)                      Delete service. Use '--all' to delete all services.
 eof
 }
 
@@ -170,6 +168,10 @@ launch_services() {
 }
 
 service() {
+	[ -z "$1" ] &&
+		usage_service &&
+		exit
+
 	if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
 		usage_service &&
 			exit
@@ -302,6 +304,10 @@ remove_from_workspace() {
 }
 
 workspace() {
+	[ -z "$1" ] &&
+		usage_workspace &&
+		exit
+
 	if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
 		usage_workspace &&
 			exit
@@ -452,15 +458,25 @@ save_bookmarks() {
 	new_bookmarks="$(grep -vf "$default_bookmark_file" /tmp/tmp_bookmarks)"
 
 	echo "Current Services:"
-	echo
-	echo "$existing_bookmarks" | sed 's/<|firebox:sep|>/\n  - /g'
-	echo
+	[ -n "$existing_bookmarks" ] && (
+		echo
+		echo "$existing_bookmarks" | sed 's/<|firebox:sep|>/\n  - /g'
+		echo
+	) || (
+		echo "  - NIL"
+		echo
+	)
 
 	if [ "$new_bookmarks" != "$existing_bookmarks" ]; then
 		echo "New Services:"
-		echo
-		echo "$new_bookmarks" | sed 's/<|firebox:sep|>/\n  - /g'
-		echo
+		[ -n "$new_bookmarks" ] && (
+			echo
+			echo "$new_bookmarks" | sed 's/<|firebox:sep|>/\n  - /g'
+			echo
+		) || (
+			echo "  - NIL"
+			echo
+		)
 
 		printf "%s" "$profile_name: Do you want to add the above services? (y/N): "
 		read -r confirm </dev/tty
@@ -469,7 +485,7 @@ save_bookmarks() {
 		y | Y)
 			echo "$new_bookmarks" >"$services_file"
 
-		[ -z "$new_bookmarks" ] && rm "$services_file"
+			[ -z "$new_bookmarks" ] && rm "$services_file"
 
 			print_log "Services updated!"
 			;;
@@ -479,8 +495,8 @@ save_bookmarks() {
 			;;
 		esac
 
-
 	else
+
 		print_log "No changes made to existing services."
 	fi
 
@@ -520,6 +536,10 @@ explorer() {
 	wait
 }
 
+print_separator() {
+	echo "$sep"
+}
+
 test() {
 	get_search_query youtube google
 }
@@ -536,7 +556,14 @@ if [ "$command" = "init" ] && [ "$#" -gt 0 ]; then
 fi
 
 case "$command" in
-init | service | workspace | clean | test | explorer)
+init | \
+	service | \
+	workspace | \
+	clean | \
+	print_separator | \
+	explorer | \
+	test)
+
 	"$command" "$@"
 	;;
 *)
