@@ -213,7 +213,7 @@ service() {
 
 		[ "$1" = "--all" ] &&
 			urls="$(get_services --all | sed "s/.*$sep//g")" ||
-      urls="$(get_services "$(get_search_query "$@")")"
+			urls="$(get_services "$(get_search_query "$@")")"
 
 		if [ -n "$urls" ]; then
 			launch_services "$urls"
@@ -424,8 +424,17 @@ workspace() {
 			if ! grep -qiE "^$1$sep_esc" "$workspaces_file"; then
 				print_log "Workspace '$1' does not exist."
 			else
-				sed -in "/^$1$sep/Id" "$workspaces_file" &&
-					print_log "Workspace '$1' deleted"
+				printf "%s" "$profile_name: Are you sure you want to delete workspace '$1'? (y/N): "
+				read -r confirm </dev/tty
+				case "$confirm" in
+				y | Y)
+					sed -in "/^$1$sep/Id" "$workspaces_file" &&
+						print_log "Workspace '$1' deleted"
+					;;
+				*)
+					print_log "No workspaces deleted."
+					;;
+				esac
 
 				[ "$(wc -l <"$workspaces_file")" -eq 0 ] && rm "$workspaces_file"
 			fi
