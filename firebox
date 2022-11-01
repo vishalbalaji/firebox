@@ -163,8 +163,7 @@ launch_services() {
 		urls="-new-window $1"
 	fi
 
-	# shellcheck disable=2086
-	setsid -f firefox -P "$profile_name" --class "$profile_name-services" $urls >/dev/null 2>&1
+	echo "$urls" | xargs setsid -f firefox -P "$profile_name" --class "$profile_name-services" >/dev/null 2>&1
 }
 
 service() {
@@ -214,7 +213,7 @@ service() {
 
 		[ "$1" = "--all" ] &&
 			urls="$(get_services --all | sed "s/.*$sep//g")" ||
-			urls="$(get_services "$(get_search_query "$@")")"
+      urls="$(get_services "$(get_search_query "$@")")"
 
 		if [ -n "$urls" ]; then
 			launch_services "$urls"
@@ -381,8 +380,8 @@ workspace() {
 
 		services="$(get_workspaces "$1")"
 
-		# shellcheck disable=2086
 		if [ -n "$services" ]; then
+			# shellcheck disable=2086
 			service launch $services
 		else
 			(print_log "Invalid workspace '$1'." && exit 1)
@@ -458,25 +457,25 @@ save_bookmarks() {
 	new_bookmarks="$(grep -vf "$default_bookmark_file" /tmp/tmp_bookmarks)"
 
 	echo "Current Services:"
-	[ -n "$existing_bookmarks" ] && (
+	if [ -n "$existing_bookmarks" ]; then
 		echo
 		echo "$existing_bookmarks" | sed 's/<|firebox:sep|>/\n  - /g'
 		echo
-	) || (
+	else
 		echo "  - NIL"
 		echo
-	)
+	fi
 
 	if [ "$new_bookmarks" != "$existing_bookmarks" ]; then
 		echo "New Services:"
-		[ -n "$new_bookmarks" ] && (
+		if [ -n "$new_bookmarks" ]; then
 			echo
 			echo "$new_bookmarks" | sed 's/<|firebox:sep|>/\n  - /g'
 			echo
-		) || (
+		else
 			echo "  - NIL"
 			echo
-		)
+		fi
 
 		printf "%s" "$profile_name: Do you want to add the above services? (y/N): "
 		read -r confirm </dev/tty
