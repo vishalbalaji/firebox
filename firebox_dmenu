@@ -1,0 +1,114 @@
+#!/bin/sh
+
+profile_dir="$(firebox print_profile_dir)"
+sep="$(firebox print_separator)"
+
+if [ -d "$profile_dir" ]; then
+	options="service\nworkspace\nexplorer"
+else
+	options="init"
+fi
+
+dmenu_cmd() {
+	dmenu -i -l 20 "$@"
+}
+
+select_stuff() {
+  action="$1"
+  shift
+
+  if [ "$1" = "--once" ]; then
+    once="--once"
+    shift
+  fi
+	options="== Confirm ==\n== Cancel ==\n$(firebox "$action" list --raw | sed "s/$sep.*//g")"
+	selection=""
+
+	if [ -n "$options" ]; then
+		while true; do
+			current_selection="$(echo "$options" | dmenu_cmd -p "Select $action:" "$@" -g 1 -l 20)"
+			if [ "$current_selection" != "== Confirm ==" ]; then
+				if [ "$current_selection" = "== Cancel ==" ]; then
+					selection=""
+					break
+				else
+					selection_name=$(echo "$current_selection" | sed 's/^* //')
+					if echo "$selection" | grep -q " $selection_name\s*"; then
+						options=$(echo "$options" | sed "/* $current_selection/{s/^* //}")
+						selection=$(echo "$selection" | sed "s/ $current_selection\s*/ /")
+					else
+						options=$(echo "$options" | sed "/$current_selection/{s/^/* /}")
+						selection="$selection $current_selection"
+					fi
+				fi
+			else
+				break
+			fi
+
+			[ "$once" = "--once" ] && break
+		done
+	fi
+
+	echo "$selection" | sed 's/^\s*//'
+
+}
+
+launch_stuff() {
+  action="$1"
+  shift
+	selection=$(select_stuff "$action" "$@")
+	[ -n "$selection" ] && echo "$selection" | xargs firebox "$action" launch
+}
+
+explorer() {
+	"$TERMINAL" sh -c "firebox explorer && printf '\n\nPress any key to close' && read -r confirm"
+}
+
+service() {
+	options="list\nlaunch"
+	option=$(echo "$options" | dmenu_cmd -p "Firebox Services:" "$@" -l 20 -g 1)
+
+	case "$option" in
+	list)
+		"$TERMINAL" sh -c "echo 'Available services:\n' && firebox service list && printf '\n\nPress any key to close' && read -r confirm"
+		;;
+	launch)
+		launch_stuff service "$@"
+		;;
+	*)
+		echo "Invalid option" &&
+			exit 1
+		;;
+	esac
+}
+
+# TODO: Implement workspaces
+workspace() {
+	options="list\nlaunch\nadd\nremove\ndelete"
+	option=$(echo "$options" | dmenu_cmd -p "Firebox Services:" "$@" -l 20 -g 1)
+
+	case "$option" in
+	list)
+		"$TERMINAL" sh -c "echo 'Available services:\n' && firebox service list && sleep 2s"
+		;;
+	launch)
+		launch_stuff workspace --once
+		;;
+	*)
+		echo "Invalid option" &&
+			exit 1
+		;;
+	esac
+}
+
+option=$(echo "$options" | dmenu_cmd -p "Firebox" "$@")
+
+case "$option" in
+explorer | service | workspace)
+	"$option" "$@"
+	;;
+*)
+	echo "Invalid option" &&
+		exit 1
+	;;
+esac
