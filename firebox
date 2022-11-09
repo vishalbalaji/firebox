@@ -83,7 +83,7 @@ sep="<|$profile_name:sep|>"
 sep_esc="<\|$profile_name:sep\|>"
 
 userchrome() {
-	echo '@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");#alltabs-button,#nav-bar,#sidebar-box,#sidebar-splitter{visibility:collapse}.tab-close-button,.tab-label-container,tab[first-visible-tab=true][last-visible-tab=true],tab[first-visible-tab=true][last-visible-tab=true]+#tabbrowser-arrowscrollbox-periphery{display:none!important}.tabbrowser-tab{min-width:35px!important;-moz-box-flex:0!important}.tab-icon-overlay{opacity:1!important;stroke:var(--tab-icon-overlay-stroke)!important;top:-5.5px!important;inset-inline-end:-6px!important;padding:2px!important;z-index:1!important}#tabbrowser-arrowscrollbox,#tabbrowser-tabs{min-height:0!important}'
+	echo '@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");#alltabs-button,#nav-bar,#sidebar-box,#sidebar-splitter{visibility:collapse!important;min-height:0!important}#tabbrowser-arrowscrollbox-periphery,.tab-close-button,.tab-label-container{display:none!important}.tabbrowser-tab{min-width:35px!important;-moz-box-flex:0!important}.tab-icon-overlay{opacity:1!important;stroke:var(--tab-icon-overlay-stroke)!important;top:-5.5px!important;inset-inline-end:-6px!important;padding:2px!important;z-index:1!important}:root{--uc-autohide-toolbox-delay:200ms;--uc-toolbox-rotation:82deg;--lwt-frame:var(--lwt-accent-color)}:root[sizemode=maximized]{--uc-toolbox-rotation:88.5deg}@media (-moz-platform:windows),(-moz-os-version:windows-win7),(-moz-os-version:windows-win10){#navigator-toolbox:not(:-moz-lwtheme){background-color:-moz-dialog!important}}#navigator-toolbox[inFullscreen],:root[sizemode=fullscreen]{margin-top:0!important}#navigator-toolbox{position:fixed!important;display:block;background-color:var(--lwt-frame,#000)!important;transition:transform 82ms linear,opacity 82ms linear!important;transition-delay:var(--uc-autohide-toolbox-delay)!important;transform-origin:top;transform:rotateX(var(--uc-toolbox-rotation));opacity:0;line-height:0;z-index:1;pointer-events:none}#navigator-toolbox:focus-within,#navigator-toolbox:hover{transition-delay:5ms!important;transform:rotateX(0);opacity:1}#navigator-toolbox>*{line-height:normal;pointer-events:auto}#navigator-toolbox,#navigator-toolbox>*{width:100vw;-moz-appearance:none!important}#TabsToolbar{width:calc(100vw - var(--uc-navigationbar-width,0px))}:root:not([sessionrestored]) #navigator-toolbox{transform:none!important}:root[customizing] #navigator-toolbox{position:relative!important;transform:none!important;opacity:1!important}#PersonalToolbar[collapsed=true],#navigator-toolbox[inFullscreen]>#PersonalToolbar{display:none}'
 }
 
 userjs() {
@@ -201,7 +201,7 @@ service() {
 		if [ "$1" = "--raw" ]; then
 			get_services "--all"
 		else
-			get_services "--all" | sed "s/$sep/ | /g"
+			get_services "--all" | sed "s/$sep/ => /g"
 		fi
 		;;
 
@@ -249,22 +249,29 @@ get_workspaces() {
 	elif [ "$1" = "--all" ]; then
 		cat "$workspaces_file"
 	else
-		grep -iE "^$1$sep_esc" "$workspaces_file" | sed "s/^$1$sep//;s/$sep/ /g"
+		services=$(grep -iE "^$1$sep_esc" "$workspaces_file")
+		if [ "$2" = "--raw" ]; then
+			echo "$services"
+		else
+			echo "$services" | sed "s/^$1$sep//;s/$sep/ /g"
+		fi
 	fi
 }
 
 add_to_workspace() {
-	! grep -qiE "^$1$sep_esc" "$workspaces_file" &&
-		print_log "Workspace '$1' does not exist." &&
+	workspace_name="$1" && shift
+
+	! grep -qiE "^$workspace_name$sep_esc" "$workspaces_file" &&
+		print_log "Workspace '$workspace_name' does not exist." &&
 		exit 1
 
 	service_list=""
 
-	for i in $2; do
+	for i in "$@"; do
 
 		if grep -qiE "^$i$sep_esc" "$services_file"; then
-			if ! grep -qiE "^$1.*$sep_esc$i" "$workspaces_file"; then
-				print_log "Adding service '$i' to workspace '$1'."
+			if ! grep -qiE "^$workspace_name.*$sep_esc$i" "$workspaces_file"; then
+				print_log "Adding service '$i' to workspace '$workspace_name'."
 				service_list="$service_list$sep$i"
 			else
 				print_log "Service '$i' already exists in workspace."
@@ -277,7 +284,7 @@ add_to_workspace() {
 
 	if [ -n "$service_list" ]; then
 		service_list="$(echo "$service_list" | sed "s/$sep//")$sep"
-		sed -in "s/^$1$sep.*/&$service_list/I" "$workspaces_file"
+		sed -in "s/^$workspace_name$sep.*/&$service_list/I" "$workspaces_file"
 	else
 		print_log "No valid services provided. Exiting." &&
 			exit 1
@@ -286,16 +293,18 @@ add_to_workspace() {
 }
 
 remove_from_workspace() {
-	! grep -qiE "^$1$sep_esc" "$workspaces_file" &&
-		print_log "Workspace '$1' does not exist." &&
+	workspace="$1" && shift
+
+	! grep -qiE "^$workspace_name$sep_esc" "$workspaces_file" &&
+		print_log "Workspace '$workspace_name' does not exist." &&
 		exit 1
 
 	service_list=""
 
-	for i in $2; do
-		if grep -qiE "^$1.*$sep_esc$i" "$workspaces_file"; then
-			print_log "Deleting service '$i' from workspace '$1'."
-			sed -in "/^$1$sep/I{s/$sep$i//}" "$workspaces_file"
+	for i in "$@"; do
+		if grep -qiE "^$workspace_name.*$sep_esc$i" "$workspaces_file"; then
+			print_log "Deleting service '$i' from workspace '$workspace_name'."
+			sed -in "/^$workspace_name$sep/I{s/$sep$i//}" "$workspaces_file"
 		else
 			print_log "Service '$i' does not exist. Ignoring..."
 		fi
@@ -332,21 +341,32 @@ workspace() {
 		;;
 
 	list)
-		[ "$#" -gt 1 ] &&
-			print_log "Unkown argument: '$1'" &&
+		[ "$#" -gt 2 ] &&
+			print_log "Unkown argument: '$3'" &&
 			usage_workspace &&
 			exit 1
 
-		if [ "$1" != "--raw" ] && [ "$1" != "" ]; then
-			print_log "Invalid argument: '$1'" &&
+		[ -z "$1" ] &&
+			print_log "You need to specify a workspace" &&
+			usage_workspace &&
+			exit 1
+
+		if [ "$2" != "--raw" ] && [ "$2" != "" ]; then
+			print_log "Invalid argument: '$2'" &&
 				usage_workspace &&
 				exit 1
 		fi
 
-		if [ "$1" = "--raw" ]; then
-			get_workspaces "--all"
+		workspace=$(get_workspaces "$1" --raw)
+
+		[ -z "$workspace" ] &&
+			print_log "Invalid workspace '$1'" &&
+			exit 1
+
+		if [ "$2" = "--raw" ]; then
+			echo "$workspace"
 		else
-			get_workspaces "--all" | sed "s/$sep\$//;s/$sep/\n  - /g;"
+			echo "$workspace" | sed "s/$sep\$//;s/$sep/\n  - /g;"
 		fi
 		;;
 
@@ -360,11 +380,9 @@ workspace() {
 			print_log "No services available. Run '$NAME service create' to create a service." &&
 			exit 1
 
-		workspace_name="$1"
-		shift
-		services="$*"
+		workspace_name="$1" && shift
 
-		add_to_workspace "$workspace_name" "$services"
+		add_to_workspace "$workspace_name" "$@"
 		;;
 
 	launch)
@@ -394,11 +412,9 @@ workspace() {
 			usage_workspace &&
 			exit 1
 
-		workspace_name="$1"
-		shift
-		services="$*"
+		workspace_name="$1" && shift
 
-		remove_from_workspace "$workspace_name" "$services"
+		remove_from_workspace "$workspace_name" "$@"
 		;;
 
 	delete)
@@ -468,7 +484,7 @@ save_bookmarks() {
 	echo "Current Services:"
 	if [ -n "$existing_bookmarks" ]; then
 		echo
-		echo "$existing_bookmarks" | sed 's/<|firebox:sep|>/\n  - /g'
+		echo "$existing_bookmarks" | sed 's/<|firebox:sep|>/ => /g'
 		echo
 	else
 		echo "  - NIL"
@@ -479,7 +495,7 @@ save_bookmarks() {
 		echo "New Services:"
 		if [ -n "$new_bookmarks" ]; then
 			echo
-			echo "$new_bookmarks" | sed 's/<|firebox:sep|>/\n  - /g'
+			echo "$new_bookmarks" | sed 's/<|firebox:sep|>/ => /g'
 			echo
 		else
 			echo "  - NIL"
@@ -545,14 +561,46 @@ explorer() {
 }
 
 print_separator() {
-	echo "$sep"
+	if [ "$1" = "--escaped" ]; then
+		echo "$sep_esc"
+	else
+		echo "$sep"
+	fi
 }
 
-test() {
-	get_search_query youtube google
+print_profile_dir() {
+	echo "$profile_dir"
 }
 
-if [ "$command" != "init" ] && [ "$command" != "test" ] && [ ! -d "$profile_dir" ]; then
+config() {
+	[ -z "$1" ] &&
+		usage_service &&
+		exit
+
+	if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+		usage_service &&
+			exit
+	fi
+
+	action="$1"
+	shift
+
+	case "$action" in
+	print_separator | print_profile_dir)
+		"$action" "$@"
+		;;
+	*)
+		print_log "Invalid action"
+		;;
+	esac
+}
+
+if {
+	[ "$command" != "init" ] &&
+		[ "$command" != "test" ] &&
+		[ "$command" != "config" ]
+} &&
+	[ ! -d "$profile_dir" ]; then
 	print_log "App not initialized. run '$NAME init' before running a command." &&
 		exit 1
 fi
@@ -563,14 +611,18 @@ if [ "$command" = "init" ] && [ "$#" -gt 0 ]; then
 		exit 1
 fi
 
+test() {
+	get_search_query youtube google
+}
+
 case "$command" in
 init | \
 	service | \
 	workspace | \
 	clean | \
-	print_separator | \
-	explorer | \
-	test)
+	config | \
+	test | \
+	explorer)
 
 	"$command" "$@"
 	;;
