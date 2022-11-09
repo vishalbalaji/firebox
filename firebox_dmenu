@@ -1,7 +1,8 @@
 #!/bin/sh
 
-profile_dir="$(firebox print_profile_dir)"
-sep="$(firebox print_separator)"
+profile_dir="$(firebox config print_profile_dir)"
+sep="$(firebox config print_separator)"
+sep_esc="$(firebox config print_separator --escaped)"
 
 if [ -d "$profile_dir" ]; then
 	options="service\nworkspace\nexplorer"
@@ -10,36 +11,57 @@ else
 fi
 
 dmenu_cmd() {
-	dmenu -i -l 20 "$@"
+	dmenu -i "$@"
+}
+
+print_log() {
+	echo "$1" >&2
 }
 
 select_stuff() {
-  action="$1"
-  shift
+	action="$1"
+	shift
 
-  if [ "$1" = "--once" ]; then
-    once="--once"
-    shift
-  fi
-	options="== Confirm ==\n== Cancel ==\n$(firebox "$action" list --raw | sed "s/$sep.*//g")"
+	prompt="Select $action(s):"
+
+	if [ "$action" = "custom" ]; then
+		options="$1"
+		prompt="Select services:"
+		shift
+	else
+		if [ "$action" = "workspace" ]; then
+			options="$(firebox workspace list --all --raw | sed "s/$sep.*//g")"
+		else
+			options="$(firebox service list --raw | sed "s/$sep.*//g")"
+		fi
+	fi
+
+	if [ "$1" = "--once" ]; then
+		once="--once"
+		shift
+	else
+		options="== Confirm ==\n$options"
+	fi
+
 	selection=""
 
 	if [ -n "$options" ]; then
 		while true; do
-			current_selection="$(echo "$options" | dmenu_cmd -p "Select $action:" "$@" -g 1 -l 20)"
+			current_selection="$(echo "$options" | dmenu_cmd -p "$prompt" "$@")"
+
+			if [ -z "$current_selection" ]; then
+				selection=""
+				break
+			fi
+
 			if [ "$current_selection" != "== Confirm ==" ]; then
-				if [ "$current_selection" = "== Cancel ==" ]; then
-					selection=""
-					break
+				selection_name=$(echo "$current_selection" | sed 's/^* //')
+				if echo "$selection" | grep -q " '$selection_name'\s*"; then
+					options=$(echo "$options" | sed "/* $selection_name/{s/^* //}")
+					selection=$(echo "$selection" | sed "s/'$selection_name'//")
 				else
-					selection_name=$(echo "$current_selection" | sed 's/^* //')
-					if echo "$selection" | grep -q " $selection_name\s*"; then
-						options=$(echo "$options" | sed "/* $current_selection/{s/^* //}")
-						selection=$(echo "$selection" | sed "s/ $current_selection\s*/ /")
-					else
-						options=$(echo "$options" | sed "/$current_selection/{s/^/* /}")
-						selection="$selection $current_selection"
-					fi
+					options=$(echo "$options" | sed "/$current_selection/{s/^/* /}")
+					selection="$selection '$current_selection'"
 				fi
 			else
 				break
@@ -54,9 +76,10 @@ select_stuff() {
 }
 
 launch_stuff() {
-  action="$1"
-  shift
+	action="$1"
+	shift
 	selection=$(select_stuff "$action" "$@")
+
 	[ -n "$selection" ] && echo "$selection" | xargs firebox "$action" launch
 }
 
@@ -66,7 +89,7 @@ explorer() {
 
 service() {
 	options="list\nlaunch"
-	option=$(echo "$options" | dmenu_cmd -p "Firebox Services:" "$@" -l 20 -g 1)
+	option=$(echo "$options" | dmenu_cmd -p "Firebox Services:" "$@")
 
 	case "$option" in
 	list)
@@ -84,15 +107,46 @@ service() {
 
 # TODO: Implement workspaces
 workspace() {
-	options="list\nlaunch\nadd\nremove\ndelete"
-	option=$(echo "$options" | dmenu_cmd -p "Firebox Services:" "$@" -l 20 -g 1)
+	options="create\nlist\nlaunch\nadd\nremove\ndelete"
+	option=$(echo "$options" | dmenu_cmd -p "Firebox Services:" "$@")
 
 	case "$option" in
+	create)
+		workspace_name=$(dmenu_cmd -p "Enter service name:" <&-)
+		echo "$workspace_name"
+		firebox workspace create "$workspace_name"
+		;;
 	list)
-		"$TERMINAL" sh -c "echo 'Available services:\n' && firebox service list && sleep 2s"
+		workspace_name=$(select_stuff custom "== ALL ==\n$(firebox workspace list --all --raw | sed "s/$sep.*//")" --once)
+		[ "$workspace_name" = "== ALL ==" ] && workspace_name="--all"
+		"$TERMINAL" sh -c "echo 'Available services:\n' && firebox workspace list $workspace_name && printf '\n\nPress any key to close' && read -r confirm"
 		;;
 	launch)
 		launch_stuff workspace --once
+		;;
+	add)
+		workspace_name=$(select_stuff workspace --once)
+		[ -n "$workspace_name" ] && services=$(select_stuff service)
+
+		{ [ -n "$workspace_name" ] && [ -n "$services" ]; } &&
+			echo "$workspace_name" "$services" | xargs firebox workspace add
+		;;
+	remove)
+		workspace_name=$(select_stuff workspace --once)
+		if [ -n "$workspace_name" ]; then
+			available_services=$(echo "$workspace_name" | xargs -I "{}" firebox workspace list "{}" --raw | grep -iEo "$sep_esc.*\$" | sed "s/$sep//;s/$sep/\n/g;")
+			if [ -n "$available_services" ]; then
+				services=$(select_stuff custom "$available_services")
+			else
+				echo "Workspace Empty"
+			fi
+			[ -n "$services" ] &&
+				echo "$workspace_name" "$services" | xargs firebox workspace remove
+		fi
+		;;
+	delete)
+		workspace_name=$(select_stuff workspace --once)
+		[ -n "$workspace_name" ] && "$TERMINAL" sh -c "firebox workspace delete $workspace_name && printf '\n\n Press any key to close' && read -r confirm"
 		;;
 	*)
 		echo "Invalid option" &&
