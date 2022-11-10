@@ -253,7 +253,17 @@ get_workspaces() {
 		if [ "$2" = "--raw" ]; then
 			echo "$services"
 		else
-			echo "$services" | sed "s/^$1$sep//;s/$sep/ /g"
+			service_list=""
+
+			services=$(echo "$services" | sed "s/^$1$sep//;s/$sep/\n/g")
+			echo "$services"
+			# echo "$services" | (
+			# 	while read -r i; do
+			#        service_list="$(echo "$i" | sed 's/ /\\ /g') $service_list"
+			# 	done
+			# 	echo "$service_list"
+			# )
+
 		fi
 	fi
 }
@@ -396,13 +406,12 @@ workspace() {
 			usage_workspace &&
 			exit 1
 
-		services="$(get_workspaces "$1")"
+		services="$(get_workspaces "$1" | sed 's/ /\\ /g')"
 
 		if [ -n "$services" ]; then
-			# shellcheck disable=2086
-			service launch $services
+			echo "$services" | xargs "$0" service launch
 		else
-			(print_log "Invalid workspace '$1'." && exit 1)
+			print_log "Workspace '$1' is empty." && exit 1
 		fi
 		;;
 
@@ -612,7 +621,7 @@ if [ "$command" = "init" ] && [ "$#" -gt 0 ]; then
 fi
 
 test() {
-	get_search_query youtube google
+  echo "$0"
 }
 
 case "$command" in
