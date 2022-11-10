@@ -105,7 +105,6 @@ service() {
 	esac
 }
 
-# TODO: Implement workspaces
 workspace() {
 	options="create\nlist\nlaunch\nadd\nremove\ndelete"
 	option=$(echo "$options" | dmenu_cmd -p "Firebox Services:" "$@")
