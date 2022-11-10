@@ -1,0 +1,112 @@
+#!/bin/sh
+
+COMMAND="firebox" 
+
+profile_dir="$("$COMMAND" config print_profile_dir)"
+sep="$("$COMMAND" config print_separator)"
+sep_esc="$("$COMMAND" config print_separator --escaped)"
+
+if [ -d "$profile_dir" ]; then
+	options="service\nworkspace\nexplorer"
+else
+	options="init"
+fi
+
+fzf_cmd() {
+	fzf --multi "$@"
+}
+
+service() {
+	options="list\nlaunch"
+	option=$(echo "$options" | fzf_cmd --no-multi "$@")
+
+	case "$option" in
+	list)
+		printf "%s\n\n" "Available services:" && "$COMMAND" service list
+		;;
+	launch)
+		services=$("$COMMAND" service list --raw | sed "s/$sep.*//g" | fzf_cmd "$@")
+		service_list=""
+		echo "$services" | (
+			while read -r i; do
+				service_list="'$i' $service_list"
+			done
+
+			if [ -n "$services" ]; then
+				echo "$service_list" | xargs "$COMMAND" service launch
+			fi
+		)
+		;;
+	*)
+		echo "Invalid option" &&
+			exit 1
+		;;
+	esac
+}
+
+workspace() {
+	options="create\nlist\nlaunch\nadd\nremove\ndelete"
+	option=$(echo "$options" | fzf_cmd --no-multi "$@")
+
+	case "$option" in
+	create)
+		printf "Enter workspace name: "
+		read -r workspace_name
+		echo "$workspace_name"
+		"$COMMAND" workspace create "$workspace_name"
+		;;
+	list)
+		workspace_name=$(printf "== ALL ==\n%s" "$("$COMMAND" workspace list --all --raw | sed "s/$sep.*//")" | fzf_cmd --no-multi "$@")
+		[ "$workspace_name" = "== ALL ==" ] && workspace_name="--all"
+		printf "Available services:\n\n" && "$COMMAND" workspace list "$workspace_name"
+		;;
+	launch)
+		workspace_name=$("$COMMAND" workspace list --all --raw | sed "s/$sep.*//" | fzf_cmd --no-multi "$@")
+		"$COMMAND" workspace launch "$workspace_name"
+		;;
+	add)
+		workspace_name="'$("$COMMAND" workspace list --all --raw | sed "s/$sep.*//" | fzf_cmd --no-multi "$@")'"
+		[ -n "$workspace_name" ] && services=$("$COMMAND" service list --raw | sed "s/$sep.*//g" | fzf_cmd "$@" | sed 's/ /\\ /g')
+
+		{ [ -n "$workspace_name" ] && [ -n "$services" ]; } &&
+			echo "$workspace_name" "$services" | xargs "$COMMAND" workspace add
+		;;
+	remove)
+		workspace_name="'$("$COMMAND" workspace list --all --raw | sed "s/$sep.*//" | fzf_cmd --no-multi "$@")'"
+		if [ -n "$workspace_name" ]; then
+			available_services=$(echo "$workspace_name" | xargs -I "{}" "$COMMAND" workspace list "{}" --raw | grep -iEo "$sep_esc.*\$" | sed "s/$sep//;s/$sep/\n/g;")
+			if [ -n "$available_services" ]; then
+				services=$(echo "$available_services" | fzf_cmd "$@" | sed 's/ /\\ /g')
+			else
+				echo "Workspace Empty"
+			fi
+			[ -n "$services" ] &&
+				echo "$workspace_name" "$services" | xargs "$COMMAND" workspace remove
+		fi
+		;;
+	delete)
+		workspace_name="'$("$COMMAND" workspace list --all --raw | sed "s/$sep.*//" | fzf_cmd --no-multi "$@")'"
+		[ -n "$workspace_name" ] && (echo "$workspace_name" | xargs "$COMMAND" workspace delete)
+		;;
+	*)
+		echo "Invalid option" &&
+			exit 1
+		;;
+	esac
+}
+
+explorer() {
+	"$COMMAND" explorer
+}
+
+option=$(echo "$options" | fzf_cmd --no-multi "$@")
+
+case "$option" in
+explorer | service | workspace)
+	"$option" "$@"
+	;;
+*)
+	echo "Invalid option" &&
+		exit 1
+	;;
+esac
