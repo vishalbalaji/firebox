@@ -93,6 +93,8 @@ userjs() {
 	echo 'user_pref("browser.startup.homepage", "");'
 	echo 'user_pref("browser.sessionstore.restore_tabs_lazily", "never");'
 	echo 'user_pref("browser.sessionstore.resume_from_crash", "never");'
+	echo 'user_pref("browser.startup.homepage", "about:blank");'
+	echo 'user_pref("browser.newtabpage.enabled", false);'
 	echo 'user_pref("browser.sessionstore.restore_on_demand", "never");'
 	echo 'user_pref("browser.uiCustomization.state", "{\"placements\":{\"widget-overflow-fixed-list\":[],\"nav-bar\":[],\"toolbar-menubar\":[],\"TabsToolbar\":[],\"PersonalToolbar\":[]},\"seen\":[],\"dirtyAreaCache\":[],\"currentVersion\":18,\"newElementCount\":18}");'
 }
@@ -114,7 +116,12 @@ init() {
 	userchrome >"$profile_dir/chrome/userChrome.css"
 
 	print_log "Profile '$profile_name' created at: $profile_dir."
-	print_log "Run '$NAME explorer' to create services."
+	if [ ! "$1" = "--no-open" ]; then
+		explorer
+  else
+    print_log "Run '$NAME explorer' to create new services."
+	fi
+	# print_log "Run '$NAME explorer' to create services."
 }
 
 create_service() {
@@ -529,7 +536,6 @@ save_bookmarks() {
 		esac
 
 	else
-
 		print_log "No changes made to existing services."
 	fi
 
@@ -545,7 +551,6 @@ explorer() {
 	sed -i '/toolkit.legacyUserProfileCustomizations.stylesheets/{s/true/false/}' "$profile_dir/user.js"
 
 	(
-		# shellcheck disable=2068
 		firefox -P "$profile_name" --class "$profile_name-explorer" >/dev/null 2>&1 &&
 			([ -f /tmp/places.sqlite ] && save_bookmarks) &&
 			sed -i '/toolkit.legacyUserProfileCustomizations.stylesheets/{s/false/true/}' "$profile_dir/user.js" &&
@@ -560,8 +565,17 @@ explorer() {
 				break
 			fi
 		done
-		cp "$profile_dir/places.sqlite" /tmp/places.sqlite
-		sqlite3 -separator "$sep" /tmp/places.sqlite 'select b.title,p.url from moz_bookmarks as b,moz_places as p where b.fk=p.id' >"$default_bookmark_file"
+
+		while true; do
+			cp "$profile_dir/places.sqlite" /tmp/places.sqlite
+			default_bookmarks=$(sqlite3 -separator "$sep" /tmp/places.sqlite 'select b.title,p.url from moz_bookmarks as b,moz_places as p where b.fk=p.id' 2>/dev/null || echo '')
+			[ -n "$default_bookmarks" ] && break
+			sleep 0.5s
+		done
+
+		[ -n "$default_bookmarks" ] &&
+			echo "$default_bookmarks" >"$default_bookmark_file" &&
+			print_log "Created default bookmarks file"
 	else
 		cp "$profile_dir/places.sqlite" /tmp/places.sqlite
 	fi
@@ -614,14 +628,8 @@ if {
 		exit 1
 fi
 
-if [ "$command" = "init" ] && [ "$#" -gt 0 ]; then
-	print_log "Unrecognized action '$1'" &&
-		usage &&
-		exit 1
-fi
-
 test() {
-  echo "$0"
+	firefox -P "$profile_name" --class "$profile_name-explorer"
 }
 
 case "$command" in
