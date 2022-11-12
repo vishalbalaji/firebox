@@ -16,6 +16,10 @@ fzf_cmd() {
 	fzf --multi "$@"
 }
 
+init() {
+  "$COMMAND" init
+}
+
 service() {
 	options="list\nlaunch"
 	option=$(echo "$options" | fzf_cmd --no-multi "$@")
@@ -102,7 +106,7 @@ explorer() {
 option=$(echo "$options" | fzf_cmd --no-multi "$@")
 
 case "$option" in
-explorer | service | workspace)
+init | explorer | service | workspace)
 	"$option" "$@"
 	;;
 *)
