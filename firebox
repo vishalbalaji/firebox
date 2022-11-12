@@ -99,6 +99,28 @@ userjs() {
 	echo 'user_pref("browser.uiCustomization.state", "{\"placements\":{\"widget-overflow-fixed-list\":[],\"nav-bar\":[],\"toolbar-menubar\":[],\"TabsToolbar\":[],\"PersonalToolbar\":[]},\"seen\":[],\"dirtyAreaCache\":[],\"currentVersion\":18,\"newElementCount\":18}");'
 }
 
+create_default_bookmarks() {
+	while true; do
+		if [ ! -f "$profile_dir/places.sqlite" ]; then
+			sleep 1s
+		else
+			break
+		fi
+	done
+
+	while true; do
+		cp "$profile_dir/places.sqlite" /tmp/places.sqlite
+		default_bookmarks=$(sqlite3 -separator "$sep" /tmp/places.sqlite 'select b.title,p.url from moz_bookmarks as b,moz_places as p where b.fk=p.id' 2>/dev/null || echo '')
+		[ -n "$default_bookmarks" ] && break
+		sleep 0.5s
+	done
+
+	[ -n "$default_bookmarks" ] &&
+		echo "$default_bookmarks" >"$default_bookmark_file"
+
+	rm /tmp/places.sqlite
+}
+
 init() {
 	[ -d "$profile_dir" ] &&
 		print_log "Profile already exists." &&
@@ -107,21 +129,19 @@ init() {
 	firefox -CreateProfile "$profile_name $profile_dir"
 
 	# user.js
-	# TODO:  Find a way to disable Mozilla start page on first launch
-
 	userjs >"$profile_dir/user.js"
 
 	# userChrome.css
 	mkdir -p "$profile_dir/chrome"
 	userchrome >"$profile_dir/chrome/userChrome.css"
 
-	print_log "Profile '$profile_name' created at: $profile_dir."
-	if [ ! "$1" = "--no-open" ]; then
-		explorer
-  else
-    print_log "Run '$NAME explorer' to create new services."
-	fi
-	# print_log "Run '$NAME explorer' to create services."
+	print_log "Initializing $NAME..."
+	(
+		firefox -P "$profile_name" --class "$profile_name-explorer" --headless >/dev/null 2>&1 &
+		create_default_bookmarks && kill "$!"
+	) &&
+		print_log "Profile '$profile_name' created at: '$profile_dir'." &&
+		print_log "Run '$NAME explorer' to create new services."
 }
 
 create_service() {
@@ -133,7 +153,7 @@ create_service() {
 		exit 1
 
 	echo "<|$profile_name:$1|><|sep|>$2" >>"$services_file"
-	print_log "Created service: $1"
+	print_log "Created service: $1."
 }
 
 get_search_query() {
@@ -142,7 +162,7 @@ get_search_query() {
 	for i in "$@"; do
 		if grep -qiE "^$i$sep_esc" "$services_file"; then
 			query="$query$i|"
-			print_log "Launching service '$i'"
+			print_log "Launching service '$i'."
 		else
 			print_log "Service '$i' does not exist. Ignoring..."
 		fi
@@ -195,12 +215,12 @@ service() {
 
 	list)
 		[ "$#" -gt 1 ] &&
-			print_log "Unkown argument: '$1'" &&
+			print_log "Unkown argument: '$1'." &&
 			usage_service &&
 			exit 1
 
 		if [ "$1" != "--raw" ] && [ "$1" != "" ]; then
-			print_log "Invalid argument: '$1'" &&
+			print_log "Invalid argument: '$1'." &&
 				usage_service &&
 				exit 1
 		fi
@@ -214,7 +234,7 @@ service() {
 
 	launch)
 		if [ -n "$(xdotool search --class "$profile_name-explorer")" ]; then
-			print_log "Cannot launch services while explorer is running" &&
+			print_log "Cannot launch services while explorer is running." &&
 				exit 1
 		fi
 
@@ -230,7 +250,7 @@ service() {
 		;;
 
 	*)
-		print_log "Invalid action: '$action'"
+		print_log "Invalid action: '$action'."
 		usage_service
 		exit 1
 		;;
@@ -247,7 +267,7 @@ create_workspace() {
 		exit 1
 
 	echo "$1$sep" >>"$workspaces_file"
-	print_log "Created workspace: $1"
+	print_log "Created workspace: $1."
 }
 
 get_workspaces() {
@@ -359,17 +379,17 @@ workspace() {
 
 	list)
 		[ "$#" -gt 2 ] &&
-			print_log "Unkown argument: '$3'" &&
+			print_log "Unkown argument: '$3'." &&
 			usage_workspace &&
 			exit 1
 
 		[ -z "$1" ] &&
-			print_log "You need to specify a workspace" &&
+			print_log "You need to specify a workspace." &&
 			usage_workspace &&
 			exit 1
 
 		if [ "$2" != "--raw" ] && [ "$2" != "" ]; then
-			print_log "Invalid argument: '$2'" &&
+			print_log "Invalid argument: '$2'." &&
 				usage_workspace &&
 				exit 1
 		fi
@@ -377,7 +397,7 @@ workspace() {
 		workspace=$(get_workspaces "$1" --raw)
 
 		[ -z "$workspace" ] &&
-			print_log "Invalid workspace '$1'" &&
+			print_log "Invalid workspace '$1'." &&
 			exit 1
 
 		if [ "$2" = "--raw" ]; then
@@ -404,7 +424,7 @@ workspace() {
 
 	launch)
 		if [ -n "$(xdotool search --class "$profile_name-explorer")" ]; then
-			print_log "Cannot launch workspaces while explorer is running" &&
+			print_log "Cannot launch workspaces while explorer is running." &&
 				exit 1
 		fi
 
@@ -461,7 +481,7 @@ workspace() {
 				case "$confirm" in
 				y | Y)
 					sed -in "/^$1$sep/Id" "$workspaces_file" &&
-						print_log "Workspace '$1' deleted"
+						print_log "Workspace '$1' deleted."
 					;;
 				*)
 					print_log "No workspaces deleted."
@@ -474,7 +494,7 @@ workspace() {
 		;;
 
 	*)
-		print_log "Invalid action: '$action'"
+		print_log "Invalid action: '$action'."
 		usage_workspace
 		exit 1
 		;;
@@ -484,7 +504,7 @@ workspace() {
 }
 
 clean() {
-	print_log "You can delete the created profile and all associated data"
+	print_log "You can delete the created profile and all associated data."
 	print_log "from Firefox's profile manager by running 'firefox -ProfileManager'."
 }
 
@@ -544,43 +564,18 @@ save_bookmarks() {
 
 explorer() {
 	if [ -n "$(xdotool search --class "$profile_name-services")" ]; then
-		print_log "Cannot launch explorer while services are running" &&
+		print_log "Cannot launch explorer while services are running." &&
 			exit 1
 	fi
 
 	sed -i '/toolkit.legacyUserProfileCustomizations.stylesheets/{s/true/false/}' "$profile_dir/user.js"
 
-	(
+	cp "$profile_dir/places.sqlite" /tmp/places.sqlite &&
 		firefox -P "$profile_name" --class "$profile_name-explorer" >/dev/null 2>&1 &&
-			([ -f /tmp/places.sqlite ] && save_bookmarks) &&
-			sed -i '/toolkit.legacyUserProfileCustomizations.stylesheets/{s/false/true/}' "$profile_dir/user.js" &&
-			([ -f /tmp/places.sqlite ] && rm /tmp/places.sqlite)
-	) &
+		([ -f /tmp/places.sqlite ] && save_bookmarks) &&
+		sed -i '/toolkit.legacyUserProfileCustomizations.stylesheets/{s/false/true/}' "$profile_dir/user.js" &&
+		([ -f /tmp/places.sqlite ] && rm /tmp/places.sqlite)
 
-	if [ ! -f "$default_bookmark_file" ]; then
-		while true; do
-			if [ ! -f "$profile_dir/places.sqlite" ]; then
-				sleep 1s
-			else
-				break
-			fi
-		done
-
-		while true; do
-			cp "$profile_dir/places.sqlite" /tmp/places.sqlite
-			default_bookmarks=$(sqlite3 -separator "$sep" /tmp/places.sqlite 'select b.title,p.url from moz_bookmarks as b,moz_places as p where b.fk=p.id' 2>/dev/null || echo '')
-			[ -n "$default_bookmarks" ] && break
-			sleep 0.5s
-		done
-
-		[ -n "$default_bookmarks" ] &&
-			echo "$default_bookmarks" >"$default_bookmark_file" &&
-			print_log "Created default bookmarks file"
-	else
-		cp "$profile_dir/places.sqlite" /tmp/places.sqlite
-	fi
-
-	wait
 }
 
 print_separator() {
@@ -613,7 +608,7 @@ config() {
 		"$action" "$@"
 		;;
 	*)
-		print_log "Invalid action"
+		print_log "Invalid action."
 		;;
 	esac
 }
@@ -629,7 +624,7 @@ if {
 fi
 
 test() {
-	firefox -P "$profile_name" --class "$profile_name-explorer"
+	sqlite3 "$profile_dir/places.sqlite" 'select b.title,p.url from moz_bookmarks as b,moz_places as p where b.fk=p.id'
 }
 
 case "$command" in
@@ -644,7 +639,7 @@ init | \
 	"$command" "$@"
 	;;
 *)
-	print_log "Invalid Option '$command'"
+	print_log "Invalid Option '$command'."
 	usage
 	exit 1
 	;;
