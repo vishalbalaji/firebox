@@ -107,6 +107,13 @@ service() {
 	esac
 }
 
+add_to_workspace() {
+	[ -n "$1" ] && services=$(select_stuff service)
+
+	{ [ -n "$1" ] && [ -n "$services" ]; } &&
+		echo "$1" "$services" | xargs "$COMMAND" workspace add
+}
+
 workspace() {
 	options="create\nlist\nlaunch\nadd\nremove\ndelete"
 	option=$(echo "$options" | dmenu_cmd -p "Firebox Services:" "$@")
@@ -115,7 +122,8 @@ workspace() {
 	create)
 		workspace_name=$(dmenu_cmd -p "Enter service name:" <&-)
 		echo "$workspace_name"
-		"$COMMAND" workspace create "$workspace_name"
+		"$COMMAND" workspace create "$workspace_name" &&
+			add_to_workspace "$workspace_name"
 		;;
 	list)
 		workspace_name=$(select_stuff custom "== ALL ==\n$("$COMMAND" workspace list --all --raw | sed "s/$sep.*//")" --once)
@@ -126,11 +134,16 @@ workspace() {
 		launch_stuff workspace --once
 		;;
 	add)
-		workspace_name=$(select_stuff workspace --once)
-		[ -n "$workspace_name" ] && services=$(select_stuff service)
+		print_log "add"
+		if [ "$1" = "--workspace" ]; then
+			print_log "waka waka"
+			workspace_name="$2" &&
+				shift && shift
+		else
+			workspace_name=$(select_stuff workspace --once)
+		fi
 
-		{ [ -n "$workspace_name" ] && [ -n "$services" ]; } &&
-			echo "$workspace_name" "$services" | xargs "$COMMAND" workspace add
+		add_to_workspace "$workspace_name"
 		;;
 	remove)
 		workspace_name=$(select_stuff workspace --once)
@@ -159,7 +172,7 @@ workspace() {
 option=$(echo "$options" | dmenu_cmd -p "Firebox" "$@")
 
 init() {
-  "$TERMINAL" sh -c "$COMMAND init && printf '\n\nPress any key to close' && read -r confirm"
+	"$TERMINAL" sh -c "$COMMAND init && printf '\n\nPress any key to close' && read -r confirm"
 }
 
 case "$option" in
