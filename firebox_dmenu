@@ -158,8 +158,12 @@ workspace() {
 
 option=$(echo "$options" | dmenu_cmd -p "Firebox" "$@")
 
+init() {
+  "$TERMINAL" sh -c "$COMMAND init"
+}
+
 case "$option" in
-explorer | service | workspace)
+init | explorer | service | workspace)
 	"$option" "$@"
 	;;
 *)
