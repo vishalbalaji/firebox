@@ -147,7 +147,7 @@ workspace() {
 		;;
 	delete)
 		workspace_name=$(select_stuff workspace --once)
-		[ -n "$workspace_name" ] && "$TERMINAL" sh -c "$COMMAND workspace delete $workspace_name && printf '\n\n Press any key to close' && read -r confirm"
+		[ -n "$workspace_name" ] && "$TERMINAL" sh -c "$COMMAND workspace delete $workspace_name && printf '\n\nPress any key to close' && read -r confirm"
 		;;
 	*)
 		echo "Invalid option" &&
@@ -159,7 +159,7 @@ workspace() {
 option=$(echo "$options" | dmenu_cmd -p "Firebox" "$@")
 
 init() {
-  "$TERMINAL" sh -c "$COMMAND init"
+  "$TERMINAL" sh -c "$COMMAND init && printf '\n\nPress any key to close' && read -r confirm"
 }
 
 case "$option" in
