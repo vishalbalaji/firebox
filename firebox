@@ -12,14 +12,16 @@ usage() {
 Usage: $NAME (<option> | <command> <action>)
 
 Options:
-  -h --help      Print this help text and exit.
-  -v --version   Print the current version and exit.
+  -h --help     Print this help text and exit.
+  -v --version  Print the current version and exit.
 
 Commands:
-  init         Initialize new profile for PWA.
-  service      Commands relating to Services.
-  workspace    Commands relating to Workspaces.
-  clean        Print instructions to delete all related files.
+  init       Initialize new profile for PWA.
+  service    Commands relating to Services.
+  workspace  Commands relating to Workspaces.
+  config     Commands relating to Profile and Configuration.
+  explorer   Launch a raw PWA instance.
+  clean      Print instructions to delete all related files.
 eof
 }
 
@@ -28,11 +30,11 @@ usage_service() {
 Usage: $NAME service <action>
 
 Options:
-  -h --help   Print this help text and exit.
+  -h --help  Print this help text and exit.
 
 Actions:
-  list [--raw]                                 List all available services. Use '--raw' to list services without formatting.
-  launch (--all | <service1> <service2>...)    Launch services. Use '--all' to launch all services.
+  list [--raw]                               List all available services. '--raw' removes formatting.
+  launch (--all | <service1> <service2>...)  Launch services. '--all' launches all services.
 eof
 }
 
@@ -41,15 +43,28 @@ usage_workspace() {
 Usage: $NAME workspace <action>
 
 Options:
-  -h --help   Print this help text and exit.
+  -h --help  Print this help text and exit.
 
 Actions:
-  create <name>                                       Create new workspace.
-  list [--raw]                                        List all available workspaces. Use '--raw' to list workspaces without formatting.
-  add <workspace-name> <service1> <service2>...       Add services to workspace.
-  remove <workspace-name> <service1> <service2>...    Remove services from workspace.
-  launch <name>                                      Launch workspace.
-  delete (--all | <name>)                             Delete workspace. Use '--all' to delete all workspaces.
+  create <name>                                     Create new workspace.
+  list (--all | <name>) [--raw]                     List a workspace and its corresponding servicecs. '--all' lists all workspaces. '--raw' removes formatting.
+  add <workspace-name> <service1> <service2>...     Add services to workspace.
+  remove <workspace-name> <service1> <service2>...  Remove services from workspace.
+  launch <name>                                     Launch workspace.
+  delete (--all | <name>)                           Delete workspace. '--all' deletes all workspaces.
+eof
+}
+
+usage_config() {
+	cat <<eof
+Usage: $NAME config <action>
+
+Options:
+  -h --help  Print this help text and exit.
+
+Actions:
+  print_profile_dir            Print the PWA profile directory.
+  print_separator [--escaped]  Print the separator character used in this script. '--escaped' prints the escaped version.
 eof
 }
 
@@ -122,6 +137,11 @@ create_default_bookmarks() {
 }
 
 init() {
+  [ "$#" -gt 0 ] && 
+		print_log "Invalid argument '$1'." &&
+    usage &&
+		exit 1
+
 	[ -d "$profile_dir" ] &&
 		print_log "Profile already exists." &&
 		exit 1
@@ -592,11 +612,11 @@ print_profile_dir() {
 
 config() {
 	[ -z "$1" ] &&
-		usage_service &&
+		usage_config &&
 		exit
 
 	if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
-		usage_service &&
+		usage_config &&
 			exit
 	fi
 
