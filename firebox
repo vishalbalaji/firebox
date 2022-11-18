@@ -60,7 +60,7 @@ usage_config() {
 Usage: $NAME config <action>
 
 Options:
-  -h --help  Print this help text and exit.
+  -h --help   Print this help text and exit.
 
 Actions:
   print_profile_dir            Print the PWA profile directory.
@@ -98,7 +98,7 @@ sep="<|$profile_name:sep|>"
 sep_esc="<\|$profile_name:sep\|>"
 
 userchrome() {
-	echo '@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");#alltabs-button,#nav-bar,#sidebar-box,#sidebar-splitter{visibility:collapse!important;min-height:0!important}#tabbrowser-arrowscrollbox-periphery,.tab-close-button,.tab-label-container{display:none!important}.tabbrowser-tab{min-width:35px!important;-moz-box-flex:0!important}.tab-icon-overlay{opacity:1!important;stroke:var(--tab-icon-overlay-stroke)!important;top:-5.5px!important;inset-inline-end:-6px!important;padding:2px!important;z-index:1!important}:root{--uc-autohide-toolbox-delay:200ms;--uc-toolbox-rotation:82deg;--lwt-frame:var(--lwt-accent-color)}:root[sizemode=maximized]{--uc-toolbox-rotation:88.5deg}@media (-moz-platform:windows),(-moz-os-version:windows-win7),(-moz-os-version:windows-win10){#navigator-toolbox:not(:-moz-lwtheme){background-color:-moz-dialog!important}}#navigator-toolbox[inFullscreen],:root[sizemode=fullscreen]{margin-top:0!important}#navigator-toolbox{position:fixed!important;display:block;background-color:var(--lwt-frame,#000)!important;transition:transform 82ms linear,opacity 82ms linear!important;transition-delay:var(--uc-autohide-toolbox-delay)!important;transform-origin:top;transform:rotateX(var(--uc-toolbox-rotation));opacity:0;line-height:0;z-index:1;pointer-events:none}#navigator-toolbox:focus-within,#navigator-toolbox:hover{transition-delay:5ms!important;transform:rotateX(0);opacity:1}#navigator-toolbox>*{line-height:normal;pointer-events:auto}#navigator-toolbox,#navigator-toolbox>*{width:100vw;-moz-appearance:none!important}#TabsToolbar{width:calc(100vw - var(--uc-navigationbar-width,0px))}:root:not([sessionrestored]) #navigator-toolbox{transform:none!important}:root[customizing] #navigator-toolbox{position:relative!important;transform:none!important;opacity:1!important}#PersonalToolbar[collapsed=true],#navigator-toolbox[inFullscreen]>#PersonalToolbar{display:none}'
+	echo '@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");#TabsToolbar .tabbrowser-tab,#alltabs-button,#nav-bar,#sidebar-box,#sidebar-splitter{visibility:collapse!important}#tabbrowser-arrowscrollbox-periphery,.tab-close-button,.tab-label-container{display:none!important}.tabbrowser-tab{min-width:35px!important;-moz-box-flex:0!important}.tab-icon-overlay{opacity:1!important;stroke:var(--tab-icon-overlay-stroke)!important;top:-5.5px!important;inset-inline-end:-6px!important;padding:2px!important;z-index:1!important}#TabsToolbar{height:10px!important}#TabsToolbar:hover{height:unset!important}#TabsToolbar:hover .tabbrowser-tab{visibility:visible!important}'
 }
 
 userjs() {
@@ -137,9 +137,9 @@ create_default_bookmarks() {
 }
 
 init() {
-  [ "$#" -gt 0 ] && 
+	[ "$#" -gt 0 ] &&
 		print_log "Invalid argument '$1'." &&
-    usage &&
+		usage &&
 		exit 1
 
 	[ -d "$profile_dir" ] &&
