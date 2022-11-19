@@ -134,7 +134,7 @@ workspace() {
 		;;
 	list)
 		workspace_name=$(select_stuff custom "== ALL ==\n$("$COMMAND" workspace list --all --raw | sed "s/$sep.*//")" --once)
-		[ "$workspace_name" = "== ALL ==" ] && workspace_name="--all"
+		[ "$workspace_name" = "'== ALL =='" ] && workspace_name="--all"
 		"$TERMINAL" sh -c "echo 'Available services:\n' && $COMMAND workspace list $workspace_name && printf '\n\nPress any key to close' && read -r confirm"
 		;;
 	launch)
