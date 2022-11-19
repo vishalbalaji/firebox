@@ -1,6 +1,6 @@
 #!/bin/sh
 
-COMMAND="firebox" 
+COMMAND="firebox"
 
 profile_dir="$("$COMMAND" config print_profile_dir)"
 sep="$("$COMMAND" config print_separator)"
@@ -17,7 +17,7 @@ fzf_cmd() {
 }
 
 init() {
-  "$COMMAND" init
+	"$COMMAND" init
 }
 
 service() {
@@ -48,6 +48,16 @@ service() {
 	esac
 }
 
+add_to_workspace() {
+	[ -n "$1" ] && workspace_name="$1" && shift
+
+	services=$("$COMMAND" service list --raw | sed "s/$sep.*//g" | fzf_cmd "$@" | sed 's/ /\\ /g')
+
+	[ -n "$services" ] &&
+		echo "$workspace_name" "$services" | xargs "$COMMAND" workspace add
+
+}
+
 workspace() {
 	options="create\nlist\nlaunch\nadd\nremove\ndelete"
 	option=$(echo "$options" | fzf_cmd --no-multi "$@")
@@ -56,8 +66,8 @@ workspace() {
 	create)
 		printf "Enter workspace name: "
 		read -r workspace_name
-		echo "$workspace_name"
-		"$COMMAND" workspace create "$workspace_name"
+		"$COMMAND" workspace create "$workspace_name" &&
+			add_to_workspace "$workspace_name" "$@"
 		;;
 	list)
 		workspace_name=$(printf "== ALL ==\n%s" "$("$COMMAND" workspace list --all --raw | sed "s/$sep.*//")" | fzf_cmd --no-multi "$@")
@@ -70,10 +80,8 @@ workspace() {
 		;;
 	add)
 		workspace_name="'$("$COMMAND" workspace list --all --raw | sed "s/$sep.*//" | fzf_cmd --no-multi "$@")'"
-		[ -n "$workspace_name" ] && services=$("$COMMAND" service list --raw | sed "s/$sep.*//g" | fzf_cmd "$@" | sed 's/ /\\ /g')
 
-		{ [ -n "$workspace_name" ] && [ -n "$services" ]; } &&
-			echo "$workspace_name" "$services" | xargs "$COMMAND" workspace add
+		add_to_workspace "$workspace_name" "$@"
 		;;
 	remove)
 		workspace_name="'$("$COMMAND" workspace list --all --raw | sed "s/$sep.*//" | fzf_cmd --no-multi "$@")'"
