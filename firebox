@@ -93,7 +93,6 @@ profile_name="$NAME"
 profile_dir="$HOME/.local/share/$profile_name"
 services_file="$profile_dir/$profile_name-services"
 workspaces_file="$profile_dir/$profile_name-workspaces"
-default_bookmark_file="$profile_dir/$profile_name-default_bookmarks"
 sep="<|$profile_name:sep|>"
 sep_esc="<\|$profile_name:sep\|>"
 
@@ -114,7 +113,7 @@ userjs() {
 	echo 'user_pref("browser.uiCustomization.state", "{\"placements\":{\"widget-overflow-fixed-list\":[],\"nav-bar\":[],\"toolbar-menubar\":[],\"TabsToolbar\":[],\"PersonalToolbar\":[]},\"seen\":[],\"dirtyAreaCache\":[],\"currentVersion\":18,\"newElementCount\":18}");'
 }
 
-create_default_bookmarks() {
+wait_for_bookmarks () {
 	while true; do
 		if [ ! -f "$profile_dir/places.sqlite" ]; then
 			sleep 1s
@@ -125,15 +124,10 @@ create_default_bookmarks() {
 
 	while true; do
 		cp "$profile_dir/places.sqlite" /tmp/places.sqlite
-		default_bookmarks=$(sqlite3 -separator "$sep" /tmp/places.sqlite 'select b.title,p.url from moz_bookmarks as b,moz_places as p where b.fk=p.id' 2>/dev/null || echo '')
-		[ -n "$default_bookmarks" ] && break
+		bookmarks=$(sqlite3 -separator "$sep" /tmp/places.sqlite 'select b.title,p.url from moz_bookmarks as b,moz_places as p where b.fk=p.id' 2>/dev/null || echo '')
+		[ -n "$bookmarks" ] && break
 		sleep 0.5s
 	done
-
-	[ -n "$default_bookmarks" ] &&
-		echo "$default_bookmarks" >"$default_bookmark_file"
-
-	rm /tmp/places.sqlite
 }
 
 init() {
@@ -158,7 +152,10 @@ init() {
 	print_log "Initializing $NAME..."
 	(
 		firefox -P "$profile_name" --class "$profile_name-explorer" --headless >/dev/null 2>&1 &
-		create_default_bookmarks && kill "$!"
+		wait_for_bookmarks && kill "$!" &&
+			sqlite3 /tmp/places.sqlite 'delete from moz_bookmarks; delete from moz_places;' &&
+			rm "$profile_dir"/places.sqlite* &&
+			mv /tmp/places.sqlite "$profile_dir"
 	) &&
 		print_log "Profile '$profile_name' created at: '$profile_dir'." &&
 		print_log "Run '$NAME explorer' to create new services."
@@ -529,14 +526,12 @@ clean() {
 }
 
 save_bookmarks() {
-	sqlite3 -separator "$sep" "$profile_dir/places.sqlite" 'select b.title,p.url from moz_bookmarks as b,moz_places as p where b.fk=p.id' >/tmp/tmp_bookmarks
+	new_bookmarks=$(sqlite3 -separator "$sep" "$profile_dir/places.sqlite" 'select b.title,p.url from moz_bookmarks as b,moz_places as p where b.fk=p.id')
 
 	existing_bookmarks=""
 	[ -f "$services_file" ] && existing_bookmarks="$(cat "$services_file")"
 
 	# TODO: show which services were added and which were removed separately.
-	new_bookmarks="$(grep -vf "$default_bookmark_file" /tmp/tmp_bookmarks)"
-
 	echo "Current Services:"
 	if [ -n "$existing_bookmarks" ]; then
 		echo
@@ -578,8 +573,6 @@ save_bookmarks() {
 	else
 		print_log "No changes made to existing services."
 	fi
-
-	rm /tmp/tmp_bookmarks
 }
 
 explorer() {
@@ -644,7 +637,10 @@ if {
 fi
 
 test() {
-	sqlite3 "$profile_dir/places.sqlite" 'select b.title,p.url from moz_bookmarks as b,moz_places as p where b.fk=p.id'
+	sed -i '/toolkit.legacyUserProfileCustomizations.stylesheets/{s/true/false/}' "$profile_dir/user.js" &&
+		firefox -P "$profile_name" --class "$profile_name-explorer" &&
+		sed -i '/toolkit.legacyUserProfileCustomizations.stylesheets/{s/false/true/}' "$profile_dir/user.js"
+	# sqlite3 "$profile_dir/places.sqlite" 'select b.title,p.url from moz_bookmarks as b,moz_places as p where b.fk=p.id'
 }
 
 case "$command" in
