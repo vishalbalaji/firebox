@@ -202,7 +202,7 @@ launch_services() {
 	urls=""
 
 	if [ "$(echo "$1" | wc -l)" -gt 1 ]; then
-		urls="$(echo "$1" | sed -z 's/\n/ /g;s/^\s*//;s/\s*$//')"
+		urls=$(echo "$1" | sed -z 's/\n/ /g;s/^\s*//;s/\s*$//')
 	else
 		urls="-new-window $1"
 	fi
@@ -256,8 +256,8 @@ service() {
 		fi
 
 		[ "$1" = "--all" ] &&
-			urls="$(get_services --all | sed "s/.*$sep//g")" ||
-			urls="$(get_services "$(get_search_query "$@")")"
+			urls=$(get_services --all | sed "s/.*$sep//g") ||
+			urls=$(get_services "$(get_search_query "$@")")
 
 		if [ -n "$urls" ]; then
 			launch_services "$urls"
@@ -450,7 +450,7 @@ workspace() {
 			usage_workspace &&
 			exit 1
 
-		services="$(get_workspaces "$1" | sed 's/ /\\ /g')"
+		services=$(get_workspaces "$1" | sed 's/ /\\ /g')
 
 		if [ -n "$services" ]; then
 			echo "$services" | xargs "$0" service launch
@@ -529,7 +529,7 @@ save_bookmarks() {
 	new_bookmarks=$(sqlite3 -separator "$sep" "$profile_dir/places.sqlite" 'select b.title,p.url from moz_bookmarks as b,moz_places as p where b.fk=p.id')
 
 	existing_bookmarks=""
-	[ -f "$services_file" ] && existing_bookmarks="$(cat "$services_file")"
+	[ -f "$services_file" ] && existing_bookmarks=$(cat "$services_file")
 
 	# TODO: show which services were added and which were removed separately.
 	echo "Current Services:"
