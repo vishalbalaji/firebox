@@ -21,6 +21,10 @@ init() {
 }
 
 service() {
+  services=$("$COMMAND" service list)
+
+  [ -z "$services" ] && exit 1
+
 	options="list\nlaunch"
 	option=$(echo "$options" | fzf_cmd --no-multi "$@")
 
@@ -59,7 +63,18 @@ add_to_workspace() {
 }
 
 workspace() {
-	options="create\nlist\nlaunch\nadd\nremove\ndelete"
+  services=$("$COMMAND" service list)
+
+  [ -z "$services" ] && exit 1
+
+  workspaces=$("$COMMAND" workspace list --all)
+
+  if [ -z "$workspaces" ]; then
+    options="create"
+  else
+    options="create\nlist\nlaunch\nadd\nremove\ndelete"
+  fi
+
 	option=$(echo "$options" | fzf_cmd --no-multi "$@")
 
 	case "$option" in

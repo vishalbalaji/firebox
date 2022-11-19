@@ -115,7 +115,14 @@ add_to_workspace() {
 }
 
 workspace() {
-	options="create\nlist\nlaunch\nadd\nremove\ndelete"
+  workspaces=$("$COMMAND" workspace list --all)
+
+  if [ -z "$workspaces" ]; then
+    options="create"
+  else
+    options="create\nlist\nlaunch\nadd\nremove\ndelete"
+  fi
+
 	option=$(echo "$options" | dmenu_cmd -p "Firebox Services:" "$@")
 
 	case "$option" in
