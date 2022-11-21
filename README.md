@@ -45,6 +45,10 @@ To add new services, you can run `firebox explorer`. This will open up a browser
 
 The bookmarks that you added will be saved as services. You can then list all available services by running `firebox service list` and launch those services using `firebox service launch <service-1> <service-2>...`.
 
+https://user-images.githubusercontent.com/36506250/203126129-d2586e2d-02e1-44f0-bafd-2461ec618b28.mp4
+
+https://user-images.githubusercontent.com/36506250/203126169-6e799b2b-4137-4433-b481-aa55367eefb0.mp4
+
 ### Workspaces
 
 You can create and manage **Workspaces** like in **Ferdi** using the `firebox workspace` command.
@@ -56,6 +60,10 @@ You can create and manage **Workspaces** like in **Ferdi** using the `firebox wo
 * To remove services to a particular workspace, run `firebox workspace remove <workspace-name> <service-1> <service-2>...`.
 * To delete a workspace, run `firebox workspace delete <workspace-name>`.
 
+https://user-images.githubusercontent.com/36506250/203126815-4ae6f3eb-241c-4129-8157-9cb191c5846b.mp4
+
 ### Clean
 
 If you want to delete the created profile and all related files, you can do so by using Firefox's `Profile Manager`. Simply run `firefox -ProfileManager`, select the profile named `firebox`, click on `Delete Profile` and then `Delete Files`.
+
+https://user-images.githubusercontent.com/36506250/203126345-bb7ec431-3712-4bb1-9006-d2c06b6ea692.mp4
