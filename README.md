@@ -33,7 +33,7 @@ Clone this repo(`git clone https://github.com/vishalbalaji/firebox`) or manually
 
 ## Usage
 
-You can run `firebox --help` to print out a list of available commands.
+You can run `firebox --help` to print out a list of available commands. Same goes for all available commands(for example, `firebox service --help`).
 
 ### Initialization
 
@@ -67,3 +67,9 @@ https://user-images.githubusercontent.com/36506250/203126815-4ae6f3eb-241c-4129-
 If you want to delete the created profile and all related files, you can do so by using Firefox's `Profile Manager`. Simply run `firefox -ProfileManager`, select the profile named `firebox`, click on `Delete Profile` and then `Delete Files`.
 
 https://user-images.githubusercontent.com/36506250/203126345-bb7ec431-3712-4bb1-9006-d2c06b6ea692.mp4
+
+## TODOs
+
+* [ ] Completion...?
+* [ ] Fix bug where text case of names in workspaces and logs don't correspond to the actual service name.
+* [ ] Better error and log handling.
