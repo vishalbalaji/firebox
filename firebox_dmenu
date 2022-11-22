@@ -1,6 +1,7 @@
 #!/bin/sh
 
 COMMAND="firebox"
+TERMINAL=${TERMINAL:-"xterm"}
 
 profile_dir="$("$COMMAND" config print_profile_dir)"
 sep="$("$COMMAND" config print_separator)"
