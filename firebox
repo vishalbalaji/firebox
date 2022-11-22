@@ -113,7 +113,7 @@ userjs() {
 	echo 'user_pref("browser.uiCustomization.state", "{\"placements\":{\"widget-overflow-fixed-list\":[],\"nav-bar\":[],\"toolbar-menubar\":[],\"TabsToolbar\":[],\"PersonalToolbar\":[]},\"seen\":[],\"dirtyAreaCache\":[],\"currentVersion\":18,\"newElementCount\":18}");'
 }
 
-wait_for_bookmarks () {
+wait_for_bookmarks() {
 	while true; do
 		if [ ! -f "$profile_dir/places.sqlite" ]; then
 			sleep 1s
@@ -621,7 +621,9 @@ config() {
 		"$action" "$@"
 		;;
 	*)
-		print_log "Invalid action."
+		print_log "Invalid action: '$action'."
+		usage_config
+		exit 1
 		;;
 	esac
 }
