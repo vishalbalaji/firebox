@@ -1,5 +1,7 @@
 # Firebox *(working title)*
 
+> This script was inspired by [PWAsForFirefox](https://github.com/filips123/PWAsForFirefox).
+
 ## What?
 Firebox(*working title*) is shell script to make Firefox emulate app browsers like [Ferdi](https://github.com/getferdi/ferdi) or [Rambox](https://rambox.app). But, instead of a  heavy chromium-based application, it is a 17Kb shell script, an existing installation of [Mozilla Firefox](https://www.mozilla.org/en-US/firefox/new/)*(if you use firefox, that is)* and some basic GNU utilities like `grep`, `sed` and `xargs`.
 
