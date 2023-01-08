@@ -63,8 +63,9 @@ Options:
   -h --help   Print this help text and exit.
 
 Actions:
-  print_profile_dir            Print the PWA profile directory.
-  print_separator [--escaped]  Print the separator character used in this script. '--escaped' prints the escaped version.
+  print_profile_dir                                   Print the PWA profile directory.
+  print_separator [--escaped]                         Print the separator character used in this script. '--escaped' prints the escaped version.
+  create_service_symlinks <directoru-name> [--clean]  Create an executable script and symlinks for all available services. '--clean' removes all existing symlinks and creates new ones.
 eof
 }
 
@@ -603,6 +604,44 @@ print_profile_dir() {
 	echo "$profile_dir"
 }
 
+launch_service_script() {
+	cat <<eof
+#!/bin/sh
+service_name=\$(basename "\$0")
+[ "\$service_name" != "launch_service" ] && firebox service launch "\$service_name"
+eof
+}
+
+create_service_symlinks() {
+	out_dir="$1"
+
+	if [ -z "$out_dir" ]; then
+		out_dir="$HOME/.local/bin/firebox"
+	else
+		shift
+	fi
+
+	[ ! -d "$out_dir" ] && mkdir -p "$out_dir"
+
+	[ "$1" = "--clean" ] &&
+		print_log "Removing existing symlinks" &&
+		find "$out_dir" -type l -delete &&
+		shift
+
+	service_script_file="$out_dir/launch_service"
+
+	[ ! -f "$service_script_file" ] &&
+		(
+			launch_service_script >"$service_script_file"
+			chmod +x "$service_script_file"
+		)
+
+	service list --raw | sed "s/$sep.*//" | while read -r service; do
+		ln -sf "$service_script_file" "$out_dir/$service"
+		print_log "Created sym link at: $out_dir/$service"
+	done
+}
+
 config() {
 	[ -z "$1" ] &&
 		usage_config &&
@@ -617,7 +656,9 @@ config() {
 	shift
 
 	case "$action" in
-	print_separator | print_profile_dir)
+	print_separator | \
+		print_profile_dir | \
+		create_service_symlinks)
 		"$action" "$@"
 		;;
 	*)
@@ -639,10 +680,7 @@ if {
 fi
 
 test() {
-	sed -i '/toolkit.legacyUserProfileCustomizations.stylesheets/{s/true/false/}' "$profile_dir/user.js" &&
-		firefox -P "$profile_name" --class "$profile_name-explorer" &&
-		sed -i '/toolkit.legacyUserProfileCustomizations.stylesheets/{s/false/true/}' "$profile_dir/user.js"
-	# sqlite3 "$profile_dir/places.sqlite" 'select b.title,p.url from moz_bookmarks as b,moz_places as p where b.fk=p.id'
+	service list --raw | sed "s/$sep.*//"
 }
 
 case "$command" in
