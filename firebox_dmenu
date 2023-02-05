@@ -8,7 +8,7 @@ sep="$("$COMMAND" config print_separator)"
 sep_esc="$("$COMMAND" config print_separator --escaped)"
 
 if [ -d "$profile_dir" ]; then
-	options="service\nworkspace\nexplorer"
+	options="service;workspace;explorer"
 else
 	options="init"
 fi
@@ -19,6 +19,16 @@ dmenu_cmd() {
 
 print_log() {
 	echo "$1" >&2
+}
+
+split_options() {
+	OLD_IFS="$IFS"
+	export IFS=";"
+	for i in $1; do
+		# call your procedure/other scripts here below
+		printf "%s\n" "$i"
+	done
+	export IFS="$OLD_IFS"
 }
 
 select_stuff() {
@@ -43,14 +53,14 @@ select_stuff() {
 		once="--once"
 		shift
 	else
-		options="== Confirm ==\n$options"
+		options="== Confirm ==;$options"
 	fi
 
 	selection=""
 
 	if [ -n "$options" ]; then
 		while true; do
-			current_selection="$(echo "$options" | dmenu_cmd -p "$prompt" "$@")"
+			current_selection="$(split_options "$options" | dmenu_cmd -p "$prompt" "$@")"
 
 			if [ -z "$current_selection" ]; then
 				selection=""
@@ -60,10 +70,10 @@ select_stuff() {
 			if [ "$current_selection" != "== Confirm ==" ]; then
 				selection_name=$(echo "$current_selection" | sed 's/^* //')
 				if echo "$selection" | grep -q " '$selection_name'\s*"; then
-					options=$(echo "$options" | sed "/* $selection_name/{s/^* //}")
-					selection=$(echo "$selection" | sed "s/'$selection_name'//")
+					options=$(split_options "$options" | sed "/* $selection_name/{s/^* //}")
+					selection=$(split_options "$selection" | sed "s/'$selection_name'//")
 				else
-					options=$(echo "$options" | sed "/$current_selection/{s/^/* /}")
+					options=$(split_options "$options" | sed "/$current_selection/{s/^/* /}")
 					selection="$selection '$current_selection'"
 				fi
 			else
@@ -91,12 +101,12 @@ explorer() {
 }
 
 service() {
-	options="list\nlaunch"
-	option=$(echo "$options" | dmenu_cmd -p "Firebox Services:" "$@")
+	options="list;launch"
+	option=$(split_options "$options" | dmenu_cmd -p "Firebox Services:" "$@")
 
 	case "$option" in
 	list)
-		"$TERMINAL" sh -c "echo 'Available services:\n' && $COMMAND service list && printf '\n\nPress any key to close' && read -r confirm"
+		"$TERMINAL" sh -c "printf 'Available services:\n' && $COMMAND service list && printf '\n\nPress any key to close' && read -r confirm"
 		;;
 	launch)
 		launch_stuff service "$@"
@@ -121,10 +131,10 @@ workspace() {
   if [ -z "$workspaces" ]; then
     options="create"
   else
-    options="create\nlist\nlaunch\nadd\nremove\ndelete"
+    options="create;list;launch;add;remove;delete"
   fi
 
-	option=$(echo "$options" | dmenu_cmd -p "Firebox Services:" "$@")
+	option=$(split_options "$options" | dmenu_cmd -p "Firebox Services:" "$@")
 
 	case "$option" in
 	create)
@@ -134,9 +144,9 @@ workspace() {
 			add_to_workspace "$workspace_name"
 		;;
 	list)
-		workspace_name=$(select_stuff custom "== ALL ==\n$("$COMMAND" workspace list --all --raw | sed "s/$sep.*//")" --once)
+		workspace_name=$(select_stuff custom "== ALL ==;$("$COMMAND" workspace list --all --raw | sed "s/$sep.*//")" --once)
 		[ "$workspace_name" = "'== ALL =='" ] && workspace_name="--all"
-		"$TERMINAL" sh -c "echo 'Available services:\n' && $COMMAND workspace list $workspace_name && printf '\n\nPress any key to close' && read -r confirm"
+		"$TERMINAL" sh -c "printf 'Available services:\n' && $COMMAND workspace list $workspace_name && printf '\n\nPress any key to close' && read -r confirm"
 		;;
 	launch)
 		launch_stuff workspace --once
@@ -177,7 +187,7 @@ workspace() {
 	esac
 }
 
-option=$(echo "$options" | dmenu_cmd -p "Firebox" "$@")
+option=$(split_options "$options" | dmenu_cmd -p "Firebox" "$@")
 
 init() {
 	"$TERMINAL" sh -c "$COMMAND init && printf '\n\nPress any key to close' && read -r confirm"
