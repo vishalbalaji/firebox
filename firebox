@@ -7,6 +7,7 @@ print_log() {
 	echo "$NAME: $1" >&2
 }
 
+# TODO: implement profiles
 usage() {
 	cat <<eof
 Usage: $NAME (<option> | <command> <action>)
@@ -65,7 +66,7 @@ Options:
 Actions:
   print_profile_dir                                   Print the PWA profile directory.
   print_separator [--escaped]                         Print the separator character used in this script. '--escaped' prints the escaped version.
-  create_service_symlinks <directoru-name> [--clean]  Create an executable script and symlinks for all available services. '--clean' removes all existing symlinks and creates new ones.
+  create_service_symlinks <directory-name> [--clean]  Create an executable script and symlinks for all available services. '--clean' removes all existing symlinks and creates new ones.
 eof
 }
 
@@ -98,7 +99,7 @@ sep="<|$profile_name:sep|>"
 sep_esc="<\|$profile_name:sep\|>"
 
 userchrome() {
-	echo '@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");#TabsToolbar .tabbrowser-tab,#alltabs-button,#nav-bar,#sidebar-box,#sidebar-splitter{visibility:collapse!important}#tabbrowser-arrowscrollbox-periphery,.tab-close-button,.tab-label-container{display:none!important}.tabbrowser-tab{min-width:35px!important;-moz-box-flex:0!important}.tab-icon-overlay{opacity:1!important;stroke:var(--tab-icon-overlay-stroke)!important;top:-5.5px!important;inset-inline-end:-6px!important;padding:2px!important;z-index:1!important}#TabsToolbar{height:10px!important}#TabsToolbar:hover{height:unset!important}#TabsToolbar:hover .tabbrowser-tab{visibility:visible!important}'
+	echo '@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");#alltabs-button,#sidebar-box,#sidebar-splitter{visibility:collapse!important}#nav-bar{position:absolute!important;bottom:0!important;inset-inline:0!important;opacity:0!important;z-index:2!important;pointer-events:none!important}#nav-bar:focus-within{opacity:90%!important;pointer-events:auto!important}#tabbrowser-arrowscrollbox-periphery,.tab-close-button,.tab-label-container{display:none!important}.tabbrowser-tab{min-width:35px!important;-moz-box-flex:0!important}.tab-icon-overlay{opacity:1!important;stroke:var(--tab-icon-overlay-stroke)!important;top:-5.5px!important;inset-inline-end:-6px!important;padding:2px!important;z-index:1!important}'
 }
 
 userjs() {
