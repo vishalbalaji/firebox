@@ -112,7 +112,9 @@ userjs() {
 	echo 'user_pref("browser.startup.homepage", "about:blank");'
 	echo 'user_pref("browser.newtabpage.enabled", false);'
 	echo 'user_pref("browser.sessionstore.restore_on_demand", "never");'
-	echo 'user_pref("browser.uiCustomization.state", "{\"placements\":{\"widget-overflow-fixed-list\":[],\"nav-bar\":[],\"toolbar-menubar\":[],\"TabsToolbar\":[],\"PersonalToolbar\":[]},\"seen\":[],\"dirtyAreaCache\":[],\"currentVersion\":18,\"newElementCount\":18}");'
+	# responsible for removing annoying pinned initial setup thing
+	# causes bug where layout switches
+	# echo 'user_pref("browser.uiCustomization.state", "{\"placements\":{\"widget-overflow-fixed-list\":[],\"nav-bar\":[],\"toolbar-menubar\":[],\"TabsToolbar\":[],\"PersonalToolbar\":[]},\"seen\":[],\"dirtyAreaCache\":[],\"currentVersion\":18,\"newElementCount\":18}");'
 }
 
 wait_for_bookmarks() {
@@ -606,7 +608,7 @@ print_profile_dir() {
 }
 
 launch_service_script() {
-	cat > "$1" <<eof
+	cat >"$1" <<eof
 #!/bin/sh
 service_name=\$(basename "\$0")
 [ "\$0" != "$1" ] && firebox service launch "\$service_name"
