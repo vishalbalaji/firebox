@@ -72,34 +72,45 @@ eof
 
 [ $# -eq 0 ] && usage && exit 0
 
-command=""
-
-case "$1" in
--h | --help)
-	usage
-	exit 0
-	;;
--v | --version)
-	echo "$VERSION"
-	exit 0
-	;;
-*)
-	command="$1"
-	shift
-	;;
-esac
-
-## Script start ##
-
 profile_name="$NAME"
 profile_dir="$HOME/.local/share/$profile_name"
 services_file="$profile_dir/$profile_name-services"
 workspaces_file="$profile_dir/$profile_name-workspaces"
 sep="<|$profile_name:sep|>"
 sep_esc="<\|$profile_name:sep\|>"
+command=""
+
+while [ "$#" -gt 0 ]; do
+	case "$1" in
+	-h | --help)
+		usage
+		exit 0
+		;;
+	-v | --version)
+		echo "$VERSION"
+		exit 0
+		;;
+	-p | --profile)
+		shift
+		profile_name="$NAME-$1"
+		profile_dir="$HOME/.local/share/$profile_name"
+		services_file="$profile_dir/$profile_name-services"
+		workspaces_file="$profile_dir/$profile_name-workspaces"
+
+		shift
+		;;
+	*)
+		command="$1"
+		shift
+		break
+		;;
+	esac
+done
+
+## Script start ##
 
 userchrome() {
-	echo '.tab-icon-image,.tab-icon-overlay,.tabbrowser-tab{margin:0!important}#alltabs-button,#editBookmarkPanel,#scrollbutton-down,#scrollbutton-up,#sidebar-box,#sidebar-splitter,#star-button-box,#tabbrowser-arrowscrollbox-periphery,.tab-close-button,.tab-label-container,spacer[part=overflow-end-indicator],spacer[part=overflow-start-indicator]{visibility:collapse!important}#nav-bar{position:absolute!important;top:0!important;inset-inline:0!important;opacity:0!important;background-color:var(--lwt-accent-color)!important;border-bottom:1px solid rgba(0,0,0,.5)!important;z-index:9999!important;pointer-events:none!important;padding-block:0.15em!important}#nav-bar:focus-within{opacity:100%!important;pointer-events:auto!important}.tabbrowser-tab{-moz-box-flex:0!important;min-width:40px!important;max-height:44px!important;flex:0!important}.tab-icon-stack{position:absolute;top:50%;left:50%;padding:0!important;transform:translateX(-50%) translateY(-50%)!important}.tab-icon-overlay{opacity:1!important;stroke:var(--tab-icon-overlay-stroke)!important;top:-5.5px!important;inset-inline-end:-6px!important;padding:2px!important;z-index:1!important}'
+	echo '.tab-icon-image,.tab-icon-overlay,.tabbrowser-tab{margin:0!important}#alltabs-button,#editBookmarkPanel,#scrollbutton-down,#scrollbutton-up,#sidebar-box,#sidebar-splitter,#star-button-box,#tabbrowser-arrowscrollbox-periphery,.tab-close-button,.tab-label-container,spacer[part=overflow-end-indicator],spacer[part=overflow-start-indicator]{visibility:collapse!important}#nav-bar{position:absolute!important;top:0!important;inset-inline:0!important;opacity:0!important;background-color:var(--lwt-accent-color)!important;border-bottom:1px solid rgba(0,0,0,.5)!important;z-index:9999!important;pointer-events:none!important;padding-block:0.15em!important}#nav-bar:focus-within{opacity:100%!important;pointer-events:auto!important}.tabbrowser-tab{-moz-box-flex:0!important;min-width:40px!important;max-height:44px!important;flex:0!important}.tab-icon-stack{position:absolute;top:50%;left:50%;padding:0!important;transform:translateX(-50%) translateY(-50%)!important}.tabbrowser-tab:not([image]):not([busy]) .tab-background::before{content:""!important;width:16px!important;aspect-ratio:1/1!important;position:absolute!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;background-image:url(chrome://branding/content/icon32.png)!important;background-size:cover!important}.tab-icon-overlay{opacity:1!important;stroke:var(--tab-icon-overlay-stroke)!important;top:-5.5px!important;inset-inline-end:-6px!important;padding:2px!important;z-index:1!important}'
 }
 
 userjs() {
@@ -684,7 +695,19 @@ if {
 fi
 
 test() {
-	service list --raw | sed "s/$sep.*//"
+	profile_name="firebox-tmp"
+	profile_dir="$HOME/.local/share/$profile_name"
+	services_file="$profile_dir/$profile_name-services"
+	workspaces_file="$profile_dir/$profile_name-workspaces"
+	sep="<|$profile_name:sep|>"
+	sep_esc="<\|$profile_name:sep\|>"
+	urls="https://google.com https://duckduckgo.com"
+
+	echo "$profile_dir/places.sqlite"
+	# new_bookmarks=$(sqlite3 -separator "$sep" "$profile_dir/places.sqlite" 'select b.title,p.url from moz_bookmarks as b,moz_places as p where b.fk=p.id')
+	new_bookmarks=$(sqlite3 "$profile_dir/places.sqlite" 'select b.title,p.url from moz_bookmarks as b,moz_places as p where b.fk=p.id')
+	echo "$new_bookmarks"
+	# echo "$urls" | xargs firefox -P "$profile_name" --class "$profile_name-services" >/dev/null 2>&1
 }
 
 case "$command" in
@@ -694,6 +717,7 @@ init | \
 	clean | \
 	config | \
 	test | \
+	profile | \
 	explorer)
 
 	"$command" "$@"
