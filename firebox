@@ -567,7 +567,14 @@ save_bookmarks() {
 	# fi
 
 	if [ "$new_bookmarks" != "$existing_bookmarks" ]; then
-		diff -a --color -yE --strip-trailing-cr <(echo "$existing_bookmarks" | sed 's/<|firebox:sep|>/ => /g') <(echo "$new_bookmarks" | sed 's/<|firebox:sep|>/ => /g')
+		existing_temp=$(mktemp)
+		new_temp=$(mktemp)
+
+		# Modify and store bookmark data in temporary files
+		echo "$existing_bookmarks" | sed 's/<|firebox:sep|>/ => /g' > "$existing_temp"
+		echo "$new_bookmarks" | sed 's/<|firebox:sep|>/ => /g' > "$new_temp"
+
+		diff -a --color -yE --strip-trailing-cr "$existing_temp" "$new_temp"
 		printf "\n"
 		# echo "New Services:"
 		# if [ -n "$new_bookmarks" ]; then
